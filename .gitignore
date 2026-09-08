@@ -9,6 +9,9 @@ dist/
 web-build/
 expo-env.d.ts
 
+# Logs
+*.log
+
 # Native
 .kotlin/
 *.orig.*
@@ -41,3 +44,5 @@ app-example
 # generated native folders
 /ios
 /android
+
+server/service-account.json`

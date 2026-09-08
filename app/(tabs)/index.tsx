@@ -1,98 +1,321 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React from 'react';
+import { router } from 'expo-router';
+import {
+  StyleSheet,
+  Text,
+  View,
+  SafeAreaView,
+  ScrollView,
+  TouchableOpacity,
+  StatusBar,
+} from 'react-native';
+import { Ionicons, Feather, MaterialIcons, Octicons } from '@expo/vector-icons';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
-
-export default function HomeScreen() {
+export default function TabScreen() {
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#D8DCE0" />
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      {/* Header Superior */}
+      {/* Header Superior */}
+      <View style={styles.header}>
+        <View style={styles.brandContainer}>
+          <View style={styles.logoBox}>
+            <Ionicons name="document-text" size={24} color="#FFFFFF" />
+          </View>
+          <View style={styles.brandTitleContainer}>
+            <Text style={styles.brandTitle}>REPORTES</Text>
+            <Text style={styles.brandSubtitle}>Yhoma Reportes V1.0</Text>
+          </View>
+        </View>
+
+        <View style={styles.headerIcons}>
+          {/* Botón para abrir la cámara */}
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => router.push('/camera')}
+          >
+            <Ionicons name="camera-outline" size={22} color="#333333" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.iconBtn}>
+            <Ionicons name="notifications-outline" size={22} color="#333333" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Contenido Desplazable */}
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+
+        {/* Sección Perfil */}
+        <View style={styles.card}>
+          <Text style={styles.cardSectionTitle}>Perfil</Text>
+
+          <TouchableOpacity style={styles.itemRow}>
+            <View style={styles.itemIconContainer}>
+              <Ionicons name="call-outline" size={20} color="#333" />
+            </View>
+            <View style={styles.itemTextContainer}>
+              <Text style={styles.itemLabel}>CELULAR</Text>
+              <Text style={styles.itemValue}>+51 987 654 321</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#666" />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity style={styles.itemRow}>
+            <View style={styles.itemIconContainer}>
+              <Ionicons name="mail-outline" size={20} color="#333" />
+            </View>
+            <View style={styles.itemTextContainer}>
+              <Text style={styles.itemLabel}>CORREO</Text>
+              <Text style={styles.itemValue}>nombreapellido@yhoma.pe</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#666" />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity style={styles.itemRow}>
+            <View style={styles.itemIconContainer}>
+              <Ionicons name="briefcase-outline" size={20} color="#333" />
+            </View>
+            <View style={styles.itemTextContainer}>
+              <Text style={styles.itemLabel}>ÁREA</Text>
+              <Text style={styles.itemValue}>Operaciones</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#666" />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity style={styles.itemRow}>
+            <View style={styles.itemIconContainer}>
+              <Ionicons name="key-outline" size={20} color="#333" />
+            </View>
+            <View style={styles.itemTextContainer}>
+              <Text style={styles.itemLabel}>SEGURIDAD</Text>
+              <Text style={styles.itemValue}>Biometría, Contraseña</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#666" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Sección Almacenamiento */}
+        <View style={styles.card}>
+          <Text style={styles.cardSectionTitle}>Almacenamiento</Text>
+
+          <TouchableOpacity style={styles.itemRow}>
+            <View style={styles.itemIconContainer}>
+              <Ionicons name="sync-outline" size={20} color="#333" />
+            </View>
+            <View style={styles.itemTextContainer}>
+              <Text style={styles.itemLabel}>SINCRONIZACIÓN</Text>
+              <Text style={styles.itemValue}>Wifi y Datos</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#666" />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity style={styles.itemRow}>
+            <View style={styles.itemIconContainer}>
+              <Ionicons name="trash-outline" size={20} color="#333" />
+            </View>
+            <View style={styles.itemTextContainer}>
+              <Text style={styles.itemLabel}>ELIMINAR DEL DISPOSITIVO TRAS</Text>
+              <Text style={styles.itemValue}>3 Meses</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#666" />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity style={styles.itemRow}>
+            <Text style={styles.syncStateText}>Estado de sincronización</Text>
+            <Ionicons name="cloud-done-outline" size={22} color="#2E7D32" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Botón Cerrar Sesión */}
+        <TouchableOpacity style={styles.logoutButton}>
+          <Ionicons name="log-out-outline" size={20} color="#7A1C1C" />
+          <Text style={styles.logoutText}>Cerrar Sesión</Text>
+        </TouchableOpacity>
+
+        {/* Footer Text */}
+        <Text style={styles.footerVersion}>Yhoma Reportes V1.0</Text>
+
+      </ScrollView>
+
+      {/* Navegación Inferior (Bottom Bar) */}
+      <View style={styles.bottomNav}>
+        <TouchableOpacity style={styles.navItem}>
+          <Octicons name="home" size={22} color="#555" />
+          <Text style={styles.navLabel}>Inicio</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.navItem}>
+          <Ionicons name="location-outline" size={22} color="#555" />
+          <Text style={styles.navLabel}>Mapa</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.navItem}>
+          <Ionicons name="image-outline" size={22} color="#555" />
+          <Text style={styles.navLabel}>Galería</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.navItem}>
+          <Ionicons name="settings-sharp" size={22} color="#7A1C1C" />
+          <Text style={[styles.navLabel, styles.navLabelActive]}>Ajustes</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: '#C8CDD0',
+  },
+  header: {
+    backgroundColor: '#D8DCE0',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 15,
+    paddingBottom: 15,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+  },
+  brandContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  logoBox: {
+    backgroundColor: '#7A1C1C',
+    padding: 8,
+    borderRadius: 10,
+    marginRight: 10,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  brandTitleContainer: {
+    justifyContent: 'center',
+  },
+  brandTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1A1A1A',
+    letterSpacing: 0.5,
+  },
+  brandSubtitle: {
+    fontSize: 10,
+    color: '#777777',
+  },
+  headerIcons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  iconBtn: {
+    padding: 4,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 20,
+  },
+  card: {
+    backgroundColor: '#E2E6E8',
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 16,
+  },
+  cardSectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#7A1C1C',
+    marginBottom: 12,
+  },
+  itemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  itemIconContainer: {
+    backgroundColor: '#CCCCCC',
+    padding: 8,
+    borderRadius: 8,
+    marginRight: 12,
+  },
+  itemTextContainer: {
+    flex: 1,
+  },
+  itemLabel: {
+    fontSize: 10,
+    color: '#888888',
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  itemValue: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#222222',
+    marginTop: 2,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#D0D4D7',
+    marginVertical: 4,
+  },
+  syncStateText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#2E7D32',
+  },
+  logoutButton: {
+    borderWidth: 1.5,
+    borderColor: '#7A1C1C',
+    borderRadius: 25,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
+    backgroundColor: 'transparent',
+  },
+  logoutText: {
+    color: '#7A1C1C',
+    fontWeight: 'bold',
+    fontSize: 15,
+    marginLeft: 8,
+  },
+  footerVersion: {
+    textAlign: 'center',
+    color: '#888888',
+    fontSize: 11,
+    marginTop: 14,
+  },
+  bottomNav: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: '#D8DCE0',
+    paddingVertical: 10,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  navItem: {
+    alignItems: 'center',
+  },
+  navLabel: {
+    fontSize: 11,
+    color: '#555555',
+    marginTop: 2,
+  },
+  navLabelActive: {
+    color: '#7A1C1C',
+    fontWeight: 'bold',
   },
 });
