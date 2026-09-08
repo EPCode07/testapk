@@ -1,0 +1,11 @@
+export type SyncItemStatus = 'pending' | 'uploading' | 'done' | 'error';
+
+export interface SyncItem {
+  id: string;
+  localUri: string;
+  filename: string;
+  createdAt: number;
+  status: SyncItemStatus;
+  attempts: number;
+  error?: string;
+}

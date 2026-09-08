@@ -1,20 +1,22 @@
+import { useEffect } from 'react';
 import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
-
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SyncProvider } from '../lib/sync/SyncContext';
+import SyncStatusBanner from '../components/SyncStatusBanner';
+import { registerBackgroundSync } from '../lib/sync/backgroundTask';
 
 export default function RootLayout() {
+  useEffect(() => {
+    registerBackgroundSync();
+  }, []);
+
   return (
-    <>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-        <Stack.Screen name="camera" options={{ headerShown: false }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </>
+    <SafeAreaProvider>
+      <SyncProvider>
+        {/* Este banner queda por encima de TODAS las pantallas de la app */}
+        <SyncStatusBanner />
+        <Stack screenOptions={{ headerShown: false }} />
+      </SyncProvider>
+    </SafeAreaProvider>
   );
 }
