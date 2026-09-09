@@ -2,7 +2,7 @@ import * as FileSystem from 'expo-file-system';
 import { SyncItem } from './types';
 
 // TODO: reemplaza por la URL pública HTTPS de tu backend ya desplegado (server/README.md paso 4)
-const BACKEND_URL = 'http://localhost:3000/health';
+const BACKEND_URL = 'https://testapk-wspv.onrender.com';
 
 // TODO: debe ser IDÉNTICO al API_SECRET configurado en server/.env
 const API_SECRET = 'sdfkn98f4fn0jfJHHW1H78S2N398u0ioj64@298286423489njnjn$';
