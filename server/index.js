@@ -64,13 +64,15 @@ app.post('/upload', checkAuth, upload.single('photo'), async (req, res) => {
       requestBody: fileMetadata,
       media,
       fields: 'id, name, webViewLink',
+      supportsAllDrives: true,        // <--- Añade esto
+      includeItemsFromAllDrives: true // <--- Añade esto
     });
 
-    fs.unlink(req.file.path, () => {});
+    fs.unlink(req.file.path, () => { });
     res.json({ success: true, file: response.data });
   } catch (error) {
     console.error('Error subiendo a Drive:', error);
-    fs.unlink(req.file.path, () => {});
+    fs.unlink(req.file.path, () => { });
     res.status(500).json({ error: 'Error al subir a Drive', detail: error.message });
   }
 });
