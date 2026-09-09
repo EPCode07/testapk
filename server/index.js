@@ -3,33 +3,19 @@ const express = require('express');
 const multer = require('multer');
 const cors = require('cors');
 const fs = require('fs');
-const { google } = require('googleapis');
+const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 app.use(cors());
 
 const upload = multer({ dest: 'tmp/' });
 
-const API_SECRET = process.env.API_SECRET; // secreto compartido entre la app y este backend
-const DRIVE_FOLDER_ID = process.env.DRIVE_FOLDER_ID; // carpeta compartida con la cuenta de servicio
+const API_SECRET = process.env.API_SECRET;
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY; // Puedes usar la Service Role Key o la Anon Key
+const BUCKET_NAME = process.env.SUPABASE_BUCKET || 'photos';
 
-/**
- * Carga las credenciales de la cuenta de servicio.
- * En producción: variable de entorno GOOGLE_SERVICE_ACCOUNT_JSON (el JSON completo en una línea).
- * En desarrollo local: archivo ./service-account.json (NUNCA lo subas a git).
- */
-function getAuth() {
-  let credentials;
-  if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
-    credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
-  } else {
-    credentials = JSON.parse(fs.readFileSync('./service-account.json', 'utf8'));
-  }
-  return new google.auth.GoogleAuth({
-    credentials,
-    scopes: ['https://www.googleapis.com/auth/drive.file'],
-  });
-}
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 function checkAuth(req, res, next) {
   const secret = req.header('x-api-secret');
@@ -47,35 +33,46 @@ app.post('/upload', checkAuth, upload.single('photo'), async (req, res) => {
   }
 
   try {
-    const auth = getAuth();
-    const drive = google.drive({ version: 'v3', auth });
+    const filename = req.body.filename || `foto_${Date.now()}.jpg`;
+    const filePath = `reportes/${filename}`;
 
-    const fileMetadata = {
-      name: req.body.filename || `foto_${Date.now()}.jpg`,
-      parents: DRIVE_FOLDER_ID ? [DRIVE_FOLDER_ID] : undefined,
-    };
+    // Leer el archivo temporal de multer como buffer
+    const fileBuffer = fs.readFileSync(req.file.path);
 
-    const media = {
-      mimeType: req.file.mimetype || 'image/jpeg',
-      body: fs.createReadStream(req.file.path),
-    };
+    // Subir a Supabase Storage
+    const { data, error } = await supabase.storage
+      .from(BUCKET_NAME)
+      .upload(filePath, fileBuffer, {
+        contentType: req.file.mimetype || 'image/jpeg',
+        upsert: true
+      });
 
-    const response = await drive.files.create({
-      requestBody: fileMetadata,
-      media,
-      fields: 'id, name, webViewLink',
-      supportsAllDrives: true,        // <--- Añade esto
-      includeItemsFromAllDrives: true // <--- Añade esto
+    if (error) {
+      throw error;
+    }
+
+    // Obtener la URL pública de la imagen
+    const { data: publicUrlData } = supabase.storage
+      .from(BUCKET_NAME)
+      .getPublicUrl(filePath);
+
+    // Limpiar archivo temporal local
+    fs.unlink(req.file.path, () => { });
+
+    res.json({
+      success: true,
+      file: {
+        name: filename,
+        url: publicUrlData.publicUrl
+      }
     });
 
-    fs.unlink(req.file.path, () => { });
-    res.json({ success: true, file: response.data });
   } catch (error) {
-    console.error('Error subiendo a Drive:', error);
+    console.error('Error subiendo a Supabase:', error);
     fs.unlink(req.file.path, () => { });
-    res.status(500).json({ error: 'Error al subir a Drive', detail: error.message });
+    res.status(500).json({ error: 'Error al subir a Supabase', detail: error.message });
   }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Servidor escuchando en puerto ${PORT}`));
+app.listen(PORT, () => console.log(`Servidor Supabase escuchando en puerto ${PORT}`));
