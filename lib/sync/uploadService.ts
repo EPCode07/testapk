@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { SyncItem } from './types';
 
 // TODO: reemplaza por la URL pública HTTPS de tu backend ya desplegado (server/README.md paso 4)
