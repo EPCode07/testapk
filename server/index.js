@@ -12,8 +12,9 @@ const upload = multer({ dest: 'tmp/' });
 
 const API_SECRET = process.env.API_SECRET;
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_KEY; // Puedes usar la Service Role Key o la Anon Key
+const SUPABASE_KEY = process.env.SUPABASE_KEY; // debe ser la service_role key, no la anon
 const BUCKET_NAME = process.env.SUPABASE_BUCKET || 'photos';
+const TABLE_NAME = process.env.SUPABASE_TABLE || 'report_photos';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -34,39 +35,57 @@ app.post('/upload', checkAuth, upload.single('photo'), async (req, res) => {
 
   try {
     const filename = req.body.filename || `foto_${Date.now()}.jpg`;
+    const description = req.body.description || null; // texto opcional que manda la app
     const filePath = `reportes/${filename}`;
 
-    // Leer el archivo temporal de multer como buffer
+    // 1. Leer el archivo temporal de multer como buffer
     const fileBuffer = fs.readFileSync(req.file.path);
 
-    // Subir a Supabase Storage
-    const { data, error } = await supabase.storage
+    // 2. Subir a Supabase Storage
+    const { error: uploadError } = await supabase.storage
       .from(BUCKET_NAME)
       .upload(filePath, fileBuffer, {
         contentType: req.file.mimetype || 'image/jpeg',
-        upsert: true
+        upsert: true,
       });
 
-    if (error) {
-      throw error;
+    if (uploadError) {
+      throw uploadError;
     }
 
-    // Obtener la URL pública de la imagen
-    const { data: publicUrlData } = supabase.storage
-      .from(BUCKET_NAME)
-      .getPublicUrl(filePath);
+    // 3. Obtener la URL pública de la imagen
+    //    (requiere que el bucket esté marcado como "Public" en Supabase Storage)
+    const { data: publicUrlData } = supabase.storage.from(BUCKET_NAME).getPublicUrl(filePath);
 
-    // Limpiar archivo temporal local
+    const storageUrl = publicUrlData.publicUrl;
+
+    // 4. Insertar el registro en la tabla report_photos
+    //    id y created_at los genera Supabase solo (uuid default / timestamptz default now())
+    const { data: row, error: insertError } = await supabase
+      .from(TABLE_NAME)
+      .insert({
+        file_name: filename,
+        storage_url: storageUrl,
+        description: description,
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      throw insertError;
+    }
+
+    // 5. Limpiar archivo temporal local
     fs.unlink(req.file.path, () => { });
 
     res.json({
       success: true,
       file: {
         name: filename,
-        url: publicUrlData.publicUrl
-      }
+        url: storageUrl,
+      },
+      row, // el registro completo insertado (id, file_name, storage_url, description, created_at)
     });
-
   } catch (error) {
     console.error('Error subiendo a Supabase:', error);
     fs.unlink(req.file.path, () => { });
