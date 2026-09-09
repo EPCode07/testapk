@@ -12,7 +12,7 @@ interface SyncContextValue {
   pendingCount: number;
   refreshQueue: () => Promise<void>;
   syncNow: () => Promise<void>;
-  addPhotoToQueue: (uri: string) => Promise<void>;
+  addPhotoToQueue: (uri: string, description?: string) => Promise<void>;
 }
 
 const SyncContext = createContext<SyncContextValue | null>(null);
@@ -63,8 +63,8 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   }, [refreshQueue]);
 
   const addPhotoToQueue = useCallback(
-    async (uri: string) => {
-      await enqueuePhoto(uri);
+    async (uri: string, description?: string) => {
+      await enqueuePhoto(uri, description);
       await refreshQueue();
       const net = await NetInfo.fetch();
       if (net.isConnected && net.isInternetReachable !== false) {

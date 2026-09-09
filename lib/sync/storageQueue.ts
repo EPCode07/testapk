@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { SyncItem } from './types';
 
 const QUEUE_KEY = 'drive_sync_queue_v1';
@@ -24,8 +24,10 @@ async function saveQueue(queue: SyncItem[]) {
 /**
  * Copia la foto a una carpeta persistente de la app (para que sobreviva
  * aunque el usuario la borre de la galería) y la agrega a la cola.
+ * @param sourceUri  URI local de la foto (ya con marca de agua aplicada)
+ * @param description  Texto opcional que el usuario escribió en el preview
  */
-export async function enqueuePhoto(sourceUri: string): Promise<SyncItem> {
+export async function enqueuePhoto(sourceUri: string, description?: string): Promise<SyncItem> {
   await ensureQueueDir();
   const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const filename = `${id}.jpg`;
@@ -37,6 +39,7 @@ export async function enqueuePhoto(sourceUri: string): Promise<SyncItem> {
     id,
     localUri: destUri,
     filename,
+    description,
     createdAt: Date.now(),
     status: 'pending',
     attempts: 0,
@@ -62,7 +65,7 @@ export async function removeItem(id: string) {
   const next = queue.filter((i) => i.id !== id);
   await saveQueue(next);
   if (item) {
-    FileSystem.deleteAsync(item.localUri, { idempotent: true }).catch(() => {});
+    FileSystem.deleteAsync(item.localUri, { idempotent: true }).catch(() => { });
   }
 }
 

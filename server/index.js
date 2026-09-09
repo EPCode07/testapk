@@ -12,7 +12,7 @@ const upload = multer({ dest: 'tmp/' });
 
 const API_SECRET = process.env.API_SECRET;
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_KEY; // debe ser la service_role key, no la anon
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const BUCKET_NAME = process.env.SUPABASE_BUCKET || 'photos';
 const TABLE_NAME = process.env.SUPABASE_TABLE || 'report_photos';
 

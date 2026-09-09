@@ -33,7 +33,14 @@ export default function TabScreen() {
           {/* Botón para abrir la cámara */}
           <TouchableOpacity
             style={styles.iconBtn}
-            onPress={() => router.push('/camera')}
+            onPress={() => {
+              try {
+                console.log('🚀 Intentando navegar a /camera...');
+                router.push('/camera');
+              } catch (error) {
+                console.error('❌ Error atrapado en navegación:', error);
+              }
+            }}
           >
             <Ionicons name="camera-outline" size={22} color="#333333" />
           </TouchableOpacity>

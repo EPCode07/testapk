@@ -4,6 +4,7 @@ export interface SyncItem {
   id: string;
   localUri: string;
   filename: string;
+  description?: string;
   createdAt: number;
   status: SyncItemStatus;
   attempts: number;

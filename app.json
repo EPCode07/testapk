@@ -4,7 +4,7 @@
     "slug": "TestApk",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/my-icon.png",
     "scheme": "testapk",
     "userInterfaceStyle": "automatic",
     "ios": {
@@ -12,10 +12,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "foregroundImage": "./assets/images/app-logo.png",
+        "backgroundColor": "#000000"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.herooftime.TestApk",
@@ -60,7 +58,10 @@
         {
           "photosPermission": "Permitir a $(PRODUCT_NAME) acceder a tus fotos.",
           "savePhotosPermission": "Permitir a $(PRODUCT_NAME) guardar fotos.",
-          "isAccessMediaLocationEnabled": true
+          "isAccessMediaLocationEnabled": true,
+          "granularPermissions": [
+            "photo"
+          ]
         }
       ],
       [
