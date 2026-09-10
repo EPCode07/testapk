@@ -18,6 +18,15 @@ const TABLE_NAME = process.env.SUPABASE_TABLE || 'report_photos';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+
+const PizZip = require('pizzip');
+const Docxtemplater = require('docxtemplater');
+const ImageModule = require('docxtemplater-image-module-free');
+const fs = require('fs');
+const path = require('path');
+
+
+
 function checkAuth(req, res, next) {
   const secret = req.header('x-api-secret');
   if (!API_SECRET || secret !== API_SECRET) {
@@ -35,13 +44,12 @@ app.post('/upload', checkAuth, upload.single('photo'), async (req, res) => {
 
   try {
     const filename = req.body.filename || `foto_${Date.now()}.jpg`;
-    const description = req.body.description || null; // texto opcional que manda la app
+    const description = req.body.description || null;
     const filePath = `reportes/${filename}`;
 
-    // 1. Leer el archivo temporal de multer como buffer
     const fileBuffer = fs.readFileSync(req.file.path);
 
-    // 2. Subir a Supabase Storage
+    // Subir imagenes a Supabase Storage
     const { error: uploadError } = await supabase.storage
       .from(BUCKET_NAME)
       .upload(filePath, fileBuffer, {
@@ -53,16 +61,11 @@ app.post('/upload', checkAuth, upload.single('photo'), async (req, res) => {
       throw uploadError;
     }
 
-    // 3. Obtener la URL pública de la imagen
-    //    (requiere que el bucket esté marcado como "Public" en Supabase Storage)
     const { data: publicUrlData } = supabase.storage.from(BUCKET_NAME).getPublicUrl(filePath);
 
     const storageUrl = publicUrlData.publicUrl;
 
-    // 4. Insertar el registro en la tabla report_photos
-    //    id y created_at los genera Supabase solo (uuid default / timestamptz default now())
-    // En lugar de un .insert() tradicional que duplica filas:
-    // Hacemos un upsert utilizando 'file_name' como llave única (requiere que file_name sea UNIQUE en tu tabla de Postgres)
+    // Insertar el registro en la tabla report_photos
     const { data: row, error: insertError } = await supabase
       .from(TABLE_NAME)
       .upsert({
@@ -70,7 +73,7 @@ app.post('/upload', checkAuth, upload.single('photo'), async (req, res) => {
         storage_url: storageUrl,
         description: description,
       }, {
-        onConflict: 'file_name' // Si el file_name ya existe, actualiza en vez de duplicar
+        onConflict: 'file_name'
       })
       .select()
       .single();
@@ -79,7 +82,6 @@ app.post('/upload', checkAuth, upload.single('photo'), async (req, res) => {
       throw insertError;
     }
 
-    // 5. Limpiar archivo temporal local
     fs.unlink(req.file.path, () => { });
 
     res.json({
@@ -88,7 +90,7 @@ app.post('/upload', checkAuth, upload.single('photo'), async (req, res) => {
         name: filename,
         url: storageUrl,
       },
-      row, // el registro completo insertado (id, file_name, storage_url, description, created_at)
+      row,
     });
   } catch (error) {
     console.error('Error subiendo a Supabase:', error);
@@ -103,7 +105,7 @@ app.get('/listall', checkAuth, async (req, res) => {
     const { data: rows, error } = await supabase
       .from(TABLE_NAME)
       .select('id, file_name, storage_url, description, created_at')
-      .order('created_at', { ascending: false }); // las más recientes primero
+      .order('created_at', { ascending: false });
 
     if (error) throw error;
 
@@ -147,7 +149,7 @@ app.get('/listfiltereddate', checkAuth, async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 50, 200);
     const offset = parseInt(req.query.offset) || 0;
-    const fecha = req.query.fecha; // formato esperado: 2026-09-10
+    const fecha = req.query.fecha;
 
     let query = supabase
       .from(TABLE_NAME)
@@ -162,10 +164,9 @@ app.get('/listfiltereddate', checkAuth, async (req, res) => {
       }
 
       const inicio = `${fecha}T00:00:00Z`;
-      // Día siguiente: sumamos 1 día de forma segura (sin librerías)
       const [y, m, d] = fecha.split('-').map(Number);
       const nextDay = new Date(Date.UTC(y, m - 1, d + 1));
-      const fin = nextDay.toISOString(); // ej: 2026-09-11T00:00:00.000Z
+      const fin = nextDay.toISOString();
 
       query = query
         .gte('created_at', inicio)
@@ -187,6 +188,89 @@ app.get('/listfiltereddate', checkAuth, async (req, res) => {
   }
 });
 
+
+app.get('/report-word', checkAuth, async (req, res) => {
+  try {
+    // 1. Datos de Supabase
+    const { data: rows, error } = await supabase
+      .from(TABLE_NAME)
+      .select('id, file_name, storage_url, description, created_at')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    if (!rows?.length) return res.status(404).json({ error: 'No hay registros' });
+
+    // 2. Descargar imágenes
+    const fotos = await Promise.all(
+      rows.map(async (row, i) => {
+        const r = await fetch(row.storage_url);
+        const buffer = Buffer.from(await r.arrayBuffer());
+        return {
+          num: i + 1,
+          descripcion: row.description || 'Sin descripción',
+          fecha_foto: new Date(row.created_at).toLocaleString('es-PE'),
+          foto: buffer.toString('base64'),
+        };
+      })
+    );
+
+    // 3. NUEVO: agrupar de 2 en 2 para la grilla
+    const filas = [];
+    for (let i = 0; i < fotos.length; i += 2) {
+      const f1 = fotos[i];
+      const f2 = fotos[i + 1] || null;
+
+      filas.push({
+        foto1: f1.foto,
+        num1: f1.num,
+        descripcion1: f1.descripcion,
+        fecha1: f1.fecha_foto,
+        tiene2: !!f2,
+        ...(f2 && {
+          foto2: f2.foto,
+          num2: f2.num,
+          descripcion2: f2.descripcion,
+          fecha2: f2.fecha_foto,
+        }),
+      });
+    }
+
+    // 4. Cargar plantilla
+    const templatePath = path.resolve(__dirname, 'plantillas/Formato_IT_RD_V2_02.07.26.docx');
+    const content = fs.readFileSync(templatePath, 'binary');
+    const zip = new PizZip(content);
+
+    // 5. Módulo de imágenes
+    const imageModule = new ImageModule({
+      centered: false,
+      getImage: (tagValue) => Buffer.from(tagValue, 'base64'),
+      getSize: () => [220, 275],
+    });
+
+    const doc = new Docxtemplater(zip, {
+      modules: [imageModule],
+      paragraphLoop: true,
+      linebreaks: true,
+    });
+
+    // 6. ACTUALIZADO: render con 'filas'
+    doc.render({
+      responsable: 'Nombre del responsable',
+      fecha: new Date().toLocaleDateString('es-PE'),
+      filas, // ← antes era photos: fotos
+    });
+
+    // 7. Enviar
+    const buffer = doc.getZip().generate({ type: 'nodebuffer' });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.setHeader('Content-Disposition', 'attachment; filename="reporte_fotografico.docx"');
+    res.send(buffer);
+
+  } catch (error) {
+    console.error('Error generando Word:', error);
+    res.status(500).json({ error: 'Error al generar', detail: error.message });
+  }
+});
 
 
 const PORT = process.env.PORT || 3000;
