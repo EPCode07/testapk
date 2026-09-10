@@ -236,7 +236,7 @@ app.get('/report-word', checkAuth, async (req, res) => {
     }
 
     // 4. Cargar plantilla
-    const templatePath = path.resolve(__dirname, 'plantillas/Formato_IT_RD_V2_02.07.26.docx');
+    const templatePath = path.resolve(__dirname, 'plantillas/plantilla.docx');
     const content = fs.readFileSync(templatePath, 'binary');
     const zip = new PizZip(content);
 
