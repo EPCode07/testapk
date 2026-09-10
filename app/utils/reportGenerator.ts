@@ -2,6 +2,8 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as ImageManipulator from 'expo-image-manipulator';
+import { getUsuario } from '../../lib/user/userStorage';
+
 
 interface ReportItem {
     id: string;
@@ -10,6 +12,9 @@ interface ReportItem {
     description: string | null;
     created_at: string;
 }
+
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+const API_SECRET = process.env.EXPO_PUBLIC_API_SECRET;
 
 export async function generatePhotoReportPDF(items: ReportItem[], basePdfUri?: string) {
     try {
@@ -221,44 +226,35 @@ export async function generatePhotoReportPDF(items: ReportItem[], basePdfUri?: s
 }
 
 export async function downloadWordReport(): Promise<void> {
-    const response = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/report-word`, {
-        headers: {
-            'x-api-secret': process.env.EXPO_PUBLIC_API_SECRET ?? '',
-        },
+    const usuario = await getUsuario();
+    if (!usuario) {
+        throw new Error('No hay un usuario configurado en este dispositivo.');
+    }
+
+    const url = `${BACKEND_URL}/report-word?usuario=${encodeURIComponent(usuario)}`;
+    const destino = `${FileSystem.documentDirectory}reporte_${Date.now()}.docx`;
+
+    console.log('📄 Descargando reporte desde:', url);
+
+    // 1. Descargar el archivo real al almacenamiento de la app
+    const resultado = await FileSystem.downloadAsync(url, destino, {
+        headers: { 'x-api-secret': API_SECRET ?? '' },
     });
 
-    if (!response.ok) {
-        if (response.status === 404) {
-            throw new Error('No hay registros para generar el reporte');
-        }
-        throw new Error(`Error del servidor: ${response.status}`);
+    if (resultado.status < 200 || resultado.status >= 300) {
+        throw new Error(`No se pudo descargar el reporte (status ${resultado.status})`);
     }
 
-    // 1. Convertir el binario a base64
-    const arrayBuffer = await response.arrayBuffer();
-    const bytes = new Uint8Array(arrayBuffer);
-    let binary = '';
-    const chunk = 0x8000;
-    for (let i = 0; i < bytes.length; i += chunk) {
-        binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+    console.log('✅ Reporte descargado en:', resultado.uri);
+
+    // 2. Abrir el selector nativo para verlo/compartirlo/guardarlo
+    const disponible = await Sharing.isAvailableAsync();
+    if (!disponible) {
+        throw new Error('Este dispositivo no soporta compartir archivos.');
     }
-    const base64 = global.btoa(binary);
 
-    // 2. Guardar en caché como .docx
-    const fecha = new Date().toISOString().split('T')[0];
-    const uri = `${FileSystem.cacheDirectory}Reporte_Fotografico_${fecha}.docx`;
-
-    await FileSystem.writeAsStringAsync(uri, base64, {
-        encoding: FileSystem.EncodingType.Base64,
+    await Sharing.shareAsync(resultado.uri, {
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        dialogTitle: 'Abrir o compartir reporte',
     });
-
-    // 3. Compartir/descargar
-    const isAvailable = await Sharing.isAvailableAsync();
-    if (isAvailable) {
-        await Sharing.shareAsync(uri, {
-            mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            dialogTitle: 'Reporte Word',
-            UTI: 'com.microsoft.word.doc', // importante en iOS para que abra en Word
-        });
-    }
 }

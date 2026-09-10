@@ -10,6 +10,7 @@ export async function uploadItem(item: SyncItem): Promise<void> {
     parameters: {
       filename: item.filename,
       description: item.description ?? '',
+      usuario: item.usuario ?? '',
     },
     headers: { 'x-api-secret': process.env.EXPO_PUBLIC_API_SECRET ?? '' },
   });

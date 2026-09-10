@@ -10,7 +10,8 @@ import {
   StatusBar,
   Button,
   Modal,
-  ActivityIndicator
+  ActivityIndicator,
+
 } from 'react-native';
 import { Ionicons, Feather, MaterialIcons, Octicons } from '@expo/vector-icons';
 
@@ -25,6 +26,14 @@ import { Asset } from 'expo-asset';
 
 import CustomAlert from '../components/CustomAlert';
 
+
+
+import { useCallback } from 'react';
+
+import { useFocusEffect } from 'expo-router';
+
+import { getUsuario } from '../lib/user/userStorage';
+
 export default function TabScreen() {
 
   const netInfo = useNetInfo();
@@ -36,6 +45,9 @@ export default function TabScreen() {
 
   const [generando, setGenerando] = useState(false);
   const [isAlertVisible, setIsAlertVisible] = useState(false);
+
+  const [usuario, setUsuario] = useState<string | null>(null);
+
 
   const syncStatusText = isSyncing
     ? "Sincronizando..."
@@ -64,6 +76,12 @@ export default function TabScreen() {
 
   const [menuVisible, setMenuVisible] = useState(false);
 
+  useFocusEffect(
+    useCallback(() => {
+      getUsuario().then(setUsuario);
+    }, [])
+  );
+
   const handleOptionSelect = (action: string) => {
     setMenuVisible(false);
     if (action === 'asset') {
@@ -84,7 +102,7 @@ export default function TabScreen() {
       }
 
 
-      const response = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/listall`, {
+      const response = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/listall?usuario=${usuario}`, {
         headers: {
           'x-api-secret': process.env.EXPO_PUBLIC_API_SECRET ?? ''
         },
@@ -246,6 +264,20 @@ export default function TabScreen() {
 
         <View style={styles.card}>
           <Text style={styles.cardSectionTitle}>Perfil</Text>
+
+          <TouchableOpacity
+            style={styles.itemRow}
+            onPress={() => router.push('/set-usuario' as any)}
+          >
+            <View style={styles.itemIconContainer}>
+              <Ionicons name="person-outline" size={20} color="#333" />
+            </View>
+            <View style={styles.itemTextContainer}>
+              <Text style={styles.itemLabel}>NOMBRE</Text>
+              <Text style={styles.itemValue}>{usuario ?? '—'}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#666" />
+          </TouchableOpacity>
 
           <TouchableOpacity style={styles.itemRow}>
             <View style={styles.itemIconContainer}>

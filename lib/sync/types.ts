@@ -10,4 +10,5 @@ export interface SyncItem {
   attempts: number;
   error?: string;
   capturedAt: string;
+  usuario?: string;
 }

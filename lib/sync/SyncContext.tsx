@@ -3,6 +3,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { getQueue, getPendingItems, enqueuePhoto, updateItem, removeItem } from './storageQueue';
 import { uploadItem } from './uploadService';
 import { notifySyncStarted, notifySyncFinished, requestNotificationPermissions } from './notifications';
+import { getUsuario } from '../user/userStorage';
 import { SyncItem } from './types';
 
 interface SyncContextValue {
@@ -28,7 +29,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const syncNow = useCallback(async () => {
-    if (syncingRef.current) return;
+    if (syncingRef.current) return; // evita dos sincronizaciones simultáneas
     const pending = await getPendingItems();
     if (pending.length === 0) return;
 
@@ -65,7 +66,8 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
 
   const addPhotoToQueue = useCallback(
     async (uri: string, description?: string) => {
-      await enqueuePhoto(uri, description);
+      const usuario = (await getUsuario()) ?? undefined; // se lee solo, sin que la pantalla lo pase
+      await enqueuePhoto(uri, description, usuario);
       await refreshQueue();
       const net = await NetInfo.fetch();
       if (net.isConnected && net.isInternetReachable !== false) {

@@ -27,7 +27,11 @@ async function saveQueue(queue: SyncItem[]) {
  * @param sourceUri  URI local de la foto (ya con marca de agua aplicada)
  * @param description  Texto opcional que el usuario escribió en el preview
  */
-export async function enqueuePhoto(sourceUri: string, description?: string): Promise<SyncItem> {
+export async function enqueuePhoto(
+  sourceUri: string,
+  description?: string,
+  usuario?: string
+): Promise<SyncItem> {
   await ensureQueueDir();
   const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const filename = `${id}.jpg`;
@@ -40,6 +44,7 @@ export async function enqueuePhoto(sourceUri: string, description?: string): Pro
     localUri: destUri,
     filename,
     description,
+    usuario,
     createdAt: Date.now(),
     status: 'pending',
     attempts: 0,
