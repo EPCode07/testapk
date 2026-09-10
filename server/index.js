@@ -255,7 +255,7 @@ app.get('/report-word', checkAuth, async (req, res) => {
       getImage: (tagValue) => Buffer.from(tagValue, 'base64'),
       // 320x400 mantiene la proporción real de tus fotos (4:5), solo más grande
       // que antes (220x275) ya que ahora van apiladas, no lado a lado.
-      getSize: () => [320, 400],
+      getSize: () => [236, 295],
     });
 
     const doc = new Docxtemplater(zip, {
