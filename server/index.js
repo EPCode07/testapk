@@ -218,20 +218,23 @@ app.get('/report-word', checkAuth, async (req, res) => {
     const filas = [];
     for (let i = 0; i < fotos.length; i += 2) {
       const f1 = fotos[i];
-      const f2 = fotos[i + 1] || null;
+      const f2 = fotos[i + 1]; // Puede ser undefined si es impar
 
       filas.push({
-        foto1: f1.foto,
-        num1: f1.num,
-        descripcion1: f1.descripcion,
-        fecha1: f1.fecha_foto,
+        // Columna Izquierda (Siempre existe si i < fotos.length)
+        foto1: f1 ? f1.foto : null,
+        num1: f1 ? f1.num : '',
+        descripcion1: f1 ? f1.descripcion : '',
+        fecha1: f1 ? f1.fecha_foto : '',
+
+        // Control para la Columna Derecha
         tiene2: !!f2,
-        ...(f2 && {
-          foto2: f2.foto,
-          num2: f2.num,
-          descripcion2: f2.descripcion,
-          fecha2: f2.fecha_foto,
-        }),
+
+        // Columna Derecha (Solo si existe f2)
+        foto2: f2 ? f2.foto : null,
+        num2: f2 ? f2.num : '',
+        descripcion2: f2 ? f2.descripcion : '',
+        fecha2: f2 ? f2.fecha_foto : ''
       });
     }
 
