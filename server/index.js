@@ -93,5 +93,97 @@ app.post('/upload', checkAuth, upload.single('photo'), async (req, res) => {
   }
 });
 
+// Obtener todos los registros de fotos
+app.get('/listall', checkAuth, async (req, res) => {
+  try {
+    const { data: rows, error } = await supabase
+      .from(TABLE_NAME)
+      .select('id, file_name, storage_url, description, created_at')
+      .order('created_at', { ascending: false }); // las más recientes primero
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      count: rows.length,
+      data: rows,
+    });
+  } catch (error) {
+    console.error('Error consultando fotos:', error);
+    res.status(500).json({ error: 'Error al obtener fotos', detail: error.message });
+  }
+});
+
+
+app.get('/listpaginated', checkAuth, async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+    const offset = parseInt(req.query.offset) || 0;
+
+    const { data: rows, error } = await supabase
+      .from(TABLE_NAME)
+      .select('id, file_name, storage_url, description, created_at')
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      count: rows.length,
+      data: rows,
+    });
+  } catch (error) {
+    console.error('Error consultando fotos:', error);
+    res.status(500).json({ error: 'Error al obtener fotos', detail: error.message });
+  }
+});
+
+app.get('/listfiltereddate', checkAuth, async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+    const offset = parseInt(req.query.offset) || 0;
+    const fecha = req.query.fecha; // formato esperado: 2026-09-10
+
+    let query = supabase
+      .from(TABLE_NAME)
+      .select('id, file_name, storage_url, description, created_at')
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (fecha) {
+      // Validar formato YYYY-MM-DD
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+        return res.status(400).json({ error: 'Formato de fecha inválido. Usa YYYY-MM-DD' });
+      }
+
+      const inicio = `${fecha}T00:00:00Z`;
+      // Día siguiente: sumamos 1 día de forma segura (sin librerías)
+      const [y, m, d] = fecha.split('-').map(Number);
+      const nextDay = new Date(Date.UTC(y, m - 1, d + 1));
+      const fin = nextDay.toISOString(); // ej: 2026-09-11T00:00:00.000Z
+
+      query = query
+        .gte('created_at', inicio)
+        .lt('created_at', fin);
+    }
+
+    const { data: rows, error } = await query;
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      count: rows.length,
+      data: rows,
+    });
+  } catch (error) {
+    console.error('Error consultando fotos:', error);
+    res.status(500).json({ error: 'Error al obtener fotos', detail: error.message });
+  }
+});
+
+
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor Supabase escuchando en puerto ${PORT}`));
