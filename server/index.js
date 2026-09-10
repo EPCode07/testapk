@@ -46,6 +46,7 @@ app.post('/upload', checkAuth, upload.single('photo'), async (req, res) => {
     const filename = req.body.filename || `foto_${Date.now()}.jpg`;
     const description = req.body.description || null;
     const filePath = `reportes/${filename}`;
+    const usuario = req.body.usuario || null;
 
     const fileBuffer = fs.readFileSync(req.file.path);
 
@@ -72,6 +73,7 @@ app.post('/upload', checkAuth, upload.single('photo'), async (req, res) => {
         file_name: filename,
         storage_url: storageUrl,
         description: description,
+        usuario: usuario,
       }, {
         onConflict: 'file_name'
       })
@@ -190,10 +192,17 @@ app.get('/listfiltereddate', checkAuth, async (req, res) => {
 
 app.get('/report-word', checkAuth, async (req, res) => {
   try {
-    // 1. Datos de Supabase
+    // El usuario llega como query param: /report-word?usuario=Juan Pérez
+    const usuario = req.query.usuario;
+    if (!usuario) {
+      return res.status(400).json({ error: 'Falta el parámetro "usuario"' });
+    }
+
+    // 1. Datos de Supabase — SOLO las filas de ese usuario
     const { data: rows, error } = await supabase
       .from(TABLE_NAME)
-      .select('id, file_name, storage_url, description, created_at')
+      .select('id, file_name, storage_url, description, created_at, usuario')
+      .eq('usuario', usuario)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
