@@ -104,9 +104,16 @@ app.post('/upload', checkAuth, upload.single('photo'), async (req, res) => {
 // Obtener todos los registros de fotos
 app.get('/listall', checkAuth, async (req, res) => {
   try {
+    // El usuario llega como query param: /listall?usuario=Juan Pérez
+    const usuario = req.query.usuario;
+    if (!usuario) {
+      return res.status(400).json({ error: 'Falta el parámetro "usuario"' });
+    }
+
     const { data: rows, error } = await supabase
       .from(TABLE_NAME)
-      .select('id, file_name, storage_url, description, created_at')
+      .select('id, file_name, storage_url, description, created_at, usuario')
+      .eq('usuario', usuario)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
