@@ -3,6 +3,7 @@ const express = require('express');
 const multer = require('multer');
 const cors = require('cors');
 const fs = require('fs');
+const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
@@ -22,8 +23,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 const PizZip = require('pizzip');
 const Docxtemplater = require('docxtemplater');
 const ImageModule = require('docxtemplater-image-module-free');
-const fs = require('fs');
-const path = require('path');
+
 
 
 
