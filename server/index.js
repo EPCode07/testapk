@@ -61,12 +61,16 @@ app.post('/upload', checkAuth, upload.single('photo'), async (req, res) => {
 
     // 4. Insertar el registro en la tabla report_photos
     //    id y created_at los genera Supabase solo (uuid default / timestamptz default now())
+    // En lugar de un .insert() tradicional que duplica filas:
+    // Hacemos un upsert utilizando 'file_name' como llave única (requiere que file_name sea UNIQUE en tu tabla de Postgres)
     const { data: row, error: insertError } = await supabase
       .from(TABLE_NAME)
-      .insert({
+      .upsert({
         file_name: filename,
         storage_url: storageUrl,
         description: description,
+      }, {
+        onConflict: 'file_name' // Si el file_name ya existe, actualiza en vez de duplicar
       })
       .select()
       .single();
