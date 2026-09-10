@@ -2,8 +2,8 @@ import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { SyncProvider } from '../lib/sync/SyncContext';
-import SyncStatusBanner from '../components/SyncStatusBanner';
 import { registerBackgroundSync } from '../lib/sync/backgroundTask';
+import FlashMessage from 'react-native-flash-message';
 
 export default function RootLayout() {
   useEffect(() => {
@@ -13,8 +13,8 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <SyncProvider>
-        <SyncStatusBanner />
         <SafeAreaView style={{ flex: 1, backgroundColor: '#e2e8f0' }} edges={['top', 'bottom']}>
+          <FlashMessage position="top" />
           <Stack screenOptions={{ headerShown: false }} />
         </SafeAreaView>
       </SyncProvider>

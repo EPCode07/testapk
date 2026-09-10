@@ -43,6 +43,7 @@ export async function enqueuePhoto(sourceUri: string, description?: string): Pro
     createdAt: Date.now(),
     status: 'pending',
     attempts: 0,
+    capturedAt: '',
   };
 
   const queue = await getQueue();
@@ -70,6 +71,11 @@ export async function removeItem(id: string) {
 }
 
 export async function getPendingItems(): Promise<SyncItem[]> {
+  const MAX_ATTEMPTS = 3;
   const queue = await getQueue();
-  return queue.filter((i) => i.status === 'pending' || i.status === 'error');
+  // Solo reintenta ítems 'pending', o 'error' que aún no llegaron al máximo de intentos.
+  // Así un ítem corrupto deja de intentarse para siempre y de arruinar la notificación.
+  return queue.filter(
+    (i) => i.status === 'pending' || (i.status === 'error' && i.attempts < MAX_ATTEMPTS)
+  );
 }

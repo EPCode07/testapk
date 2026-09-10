@@ -31,6 +31,9 @@ export default function CameraScreen() {
     const [cameraReady, setCameraReady] = useState(false);
     const [imageToProcessUri, setImageToProcessUri] = useState<string | null>(null);
     const [currentLocation, setCurrentLocation] = useState<any>(null);
+    const [heading, setHeading] = useState<number | null>(null);
+    const [capturedAt, setCapturedAt] = useState<string | null>(null);
+
     const viewShotRef = useRef<any>(null);
 
     const pathname = usePathname();
@@ -39,12 +42,54 @@ export default function CameraScreen() {
 
     const [photoDimensions, setPhotoDimensions] = useState({ width: 1080, height: 1920 });
 
+    const headingRef = useRef<number | null>(null);
+    const headingSubRef = useRef<Location.LocationSubscription | null>(null);
+    const lastKnownLocationRef = useRef<any>(null);
+    const locationSubRef = useRef<Location.LocationSubscription | null>(null);
+
     useEffect(() => {
         if (pathname === '/camera') {
             setImageToProcessUri(null);
             setIsImageLoaded(false);
         }
     }, [pathname]);
+
+
+
+    // Precalentar ambos sensores mientras la cámara está abierta
+    useEffect(() => {
+        if (pathname !== '/camera') return;
+
+        const warmup = async () => {
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') return;
+
+            // 🧭 Brújula (heading)
+            headingSubRef.current = await Location.watchHeadingAsync((data) => {
+                const h = data.trueHeading >= 0 ? data.trueHeading : data.magHeading;
+                if (h >= 0) headingRef.current = h;
+            });
+
+            // 📍 GPS (mantener fix fresco)
+            locationSubRef.current = await Location.watchPositionAsync(
+                { accuracy: Location.Accuracy.Balanced, distanceInterval: 5 },
+                (loc) => { lastKnownLocationRef.current = loc; }
+            );
+        };
+
+        warmup();
+
+        // 👇 Limpieza al salir de la pantalla
+        return () => {
+            headingSubRef.current?.remove();
+            headingSubRef.current = null;
+            locationSubRef.current?.remove();
+            locationSubRef.current = null;
+            headingRef.current = null;
+            lastKnownLocationRef.current = null;
+        };
+    }, [pathname]);
+
 
     if (!permission) {
         return (
@@ -94,6 +139,8 @@ export default function CameraScreen() {
                     return;
                 }
 
+                setCapturedAt(new Date().toISOString());
+
                 if (photo.width && photo.height) {
                     setPhotoDimensions({ width: photo.width, height: photo.height });
                 }
@@ -102,45 +149,40 @@ export default function CameraScreen() {
                 let imageToUse = photo.uri;
 
                 try {
-                    console.log('🔄 Comprimiendo y redimensionando imagen...');
+                    console.log('🔄 Normalizando dimensiones a relación 4:5...');
+
+                    const TARGET_WIDTH = 1200;
+                    const TARGET_HEIGHT = 1500; // Relación exacta 4:5 (1200x1500)
+
                     const manipulatedImage = await ImageManipulator.manipulateAsync(
                         photo.uri,
-                        [{ resize: { width: 1200 } }],
-                        {
-                            compress: 0.7,
-                            format: ImageManipulator.SaveFormat.JPEG,
-                        }
+                        [
+                            { resize: { width: TARGET_WIDTH, height: TARGET_HEIGHT } }
+                        ],
+                        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
                     );
+
                     imageToUse = manipulatedImage.uri;
-                    console.log('✅ Imagen optimizada:', imageToUse);
+                    setPhotoDimensions({ width: TARGET_WIDTH, height: TARGET_HEIGHT });
+
+                    console.log('✅ Imagen fijada en relación 4:5:', TARGET_WIDTH, 'x', TARGET_HEIGHT);
                 } catch (manipulationError) {
-                    console.error('⚠️ Error comprimiendo imagen, usando original:', manipulationError);
+                    console.error('⚠️ Error normalizando imagen:', manipulationError);
                 }
 
                 let finalImageUri = imageToUse;
                 try {
+                    // 👇 TODO ESTO ahora es instantáneo, los sensores ya estaban calientes
                     console.log('📍 Obteniendo ubicación...');
-                    let { status } = await Location.requestForegroundPermissionsAsync();
-                    let location = null;
-
-                    if (status === 'granted') {
-                        try {
-                            location = await Location.getLastKnownPositionAsync({});
-
-                            if (!location) {
-                                location = (await Promise.race([
-                                    Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
-                                    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout GPS')), 2000)),
-                                ])) as any;
-                            }
-                        } catch (e) {
-                            console.log('⚠️ No se pudo obtener el GPS rápido, usando valores por defecto o nulos');
-                        }
-                    }
+                    const location = lastKnownLocationRef.current;
+                    const headingValue = headingRef.current;
+                    console.log('✅ Ubicación (precalentada):', location?.coords ?? 'sin fix aún');
+                    console.log('🧭 Heading (precalentado):', headingValue);
 
                     setIsImageLoaded(false);
                     setImageToProcessUri(imageToUse);
                     setCurrentLocation(location);
+                    setHeading(headingValue);
 
                     await new Promise<void>((resolve) => {
                         let elapsedTime = 0;
@@ -187,6 +229,19 @@ export default function CameraScreen() {
         }
     };
 
+    const now = new Date();
+
+    const fecha = capturedAt ? new Date(capturedAt) : new Date();
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const fechaStr = `${pad(fecha.getDate())}/${pad(fecha.getMonth() + 1)}/${fecha.getFullYear().toString().slice(-2)}`;
+    const hora12 = fecha.getHours() % 12 === 0 ? 12 : fecha.getHours() % 12;
+    const horaStr = `${hora12}:${pad(fecha.getMinutes())} ${fecha.getHours() >= 12 ? 'pm' : 'am'}`;
+
+    // Fuera del componente o antes del return
+    const puntosCardinales = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+
+    const gradoACardinal = (deg: number): string =>
+        puntosCardinales[Math.round(deg / 45) % 8];
 
     const zoomScale = zoom === 1 ? 0 : zoom === 2 ? 0.5 : 0;
 
@@ -358,16 +413,19 @@ export default function CameraScreen() {
                                     <Ionicons name="compass-outline" size={20} color="#FFFFFF" />
                                     <Text style={styles.metaText}>
                                         {' '}
-                                        NE<Text style={styles.metaBold}>32°</Text>
+                                        {heading != null ? gradoACardinal(heading) : '--'}
+                                        <Text style={styles.metaBold}>
+                                            {heading != null ? `${Math.round(heading)}°` : '--°'}
+                                        </Text>
                                     </Text>
                                 </View>
                                 <View style={styles.metaRow}>
                                     <Ionicons name="calendar-outline" size={20} color="#FFFFFF" />
-                                    <Text style={styles.metaText}> 31/08/26</Text>
+                                    <Text style={styles.metaText}> {fechaStr}</Text>
                                 </View>
                                 <View style={styles.metaRow}>
                                     <Ionicons name="time-outline" size={20} color="#FFFFFF" />
-                                    <Text style={styles.metaText}> 5:00 pm</Text>
+                                    <Text style={styles.metaText}> {horaStr}</Text>
                                 </View>
                             </View>
                         </View>

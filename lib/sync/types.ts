@@ -9,4 +9,5 @@ export interface SyncItem {
   status: SyncItemStatus;
   attempts: number;
   error?: string;
+  capturedAt: string;
 }

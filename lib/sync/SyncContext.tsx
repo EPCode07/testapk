@@ -28,7 +28,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const syncNow = useCallback(async () => {
-    if (syncingRef.current) return; // evita dos sincronizaciones simultáneas
+    if (syncingRef.current) return;
     const pending = await getPendingItems();
     if (pending.length === 0) return;
 
@@ -48,6 +48,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
         uploaded += 1;
       } catch (err: any) {
         failed += 1;
+        console.error(`❌ Falló la subida del ítem ${item.id}:`, err?.message ?? err);
         await updateItem(item.id, {
           status: 'error',
           attempts: (item.attempts ?? 0) + 1,

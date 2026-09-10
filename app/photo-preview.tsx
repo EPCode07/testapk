@@ -7,11 +7,17 @@ import {
     TextInput,
     TouchableOpacity,
     SafeAreaView,
-    StatusBar
+    StatusBar,
+    Alert
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import { useSync } from '../lib/sync/SyncContext';
+
+import { showMessage } from "react-native-flash-message";
+
+
+import CustomAlert from '../components/CustomAlert';
 
 export default function PhotoPreviewScreen() {
     const router = useRouter();
@@ -20,7 +26,10 @@ export default function PhotoPreviewScreen() {
     const { addPhotoToQueue } = useSync();
 
     const [description, setDescription] = useState('');
-    const [isConforme, setIsConforme] = useState<boolean | null>(true);
+    const [isConforme, setIsConforme] = useState<boolean | null>(null);
+
+    const [isAlertVisible, setIsAlertVisible] = useState(false);
+
     const handleNotConforme = () => {
         console.log('🔄 Foto no conforme, regresando a la cámara...');
         router.back();
@@ -35,58 +44,72 @@ export default function PhotoPreviewScreen() {
         try {
             console.log('💾 Guardando en local y enviando a cola con descripción:', description);
 
-            // 1. Guardar en la galería del dispositivo la foto con marca de agua
             if (watermarkedUri) {
                 await MediaLibrary.saveToLibraryAsync(watermarkedUri);
                 console.log('✅ Foto con marca de agua guardada en galería');
             }
 
-            // 2. Agregar a la cola de sincronización (URI + la descripción que escribió el usuario)
             await addPhotoToQueue(watermarkedUri, description);
 
-            // 3. Regresar o avanzar a la siguiente pantalla del flujo
             router.back();
         } catch (error) {
             console.error('❌ Error al guardar y avanzar:', error);
         }
     };
 
+
+    // Función para cuando el usuario presiona "Aceptar" en la alerta
+    const handleOnAmazonAccept = () => {
+        console.log("Usuario aceptó la notificación de Amazon. Abriendo el carrito...");
+        // Aquí iría tu lógica de navegación o acción
+        // Por ejemplo: navigation.navigate('Cart');
+    };
+
+
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="light-content" backgroundColor="#000000" />
 
-            {/* 1. Imagen principal con la marca de agua ya aplicada */}
             <View style={styles.imageContainer}>
                 {watermarkedUri ? (
-                    // IMPORTANTE: "contain" en vez de "cover" — así se ve la foto COMPLETA
-                    // (header con logo + card inferior) sin recortar nada. "cover" recortaba
-                    // el header porque la proporción del contenedor no coincide con la de la foto.
                     <Image source={{ uri: watermarkedUri }} style={styles.previewImage} resizeMode="contain" />
                 ) : null}
             </View>
 
-            {/* 2. Sección del Formulario y Controles Inferiores */}
             <View style={styles.formContainer}>
 
-                {/* Input de Descripción */}
                 <View style={styles.inputWrapper}>
                     <TextInput
-                        style={styles.textInput}
-                        placeholder="Agregar descripción"
-                        placeholderTextColor="#888888"
+                        style={[
+                            styles.textInput,
+                        ]}
+                        placeholder="Escribe la descripción aquí..."
                         value={description}
                         onChangeText={setDescription}
+                        editable={isConforme !== true}
+                        multiline
                     />
+
+
                     <TouchableOpacity style={styles.micButton}>
                         <Text style={styles.micIcon}>🎤</Text>
                     </TouchableOpacity>
                 </View>
 
-                {/* Botones Conforme / No conforme */}
                 <View style={styles.decisionContainer}>
                     <TouchableOpacity
                         style={[styles.decisionButton, isConforme === true && styles.conformeActive]}
-                        onPress={() => setIsConforme(true)}
+                        onPress={() => {
+                            setIsConforme(true);
+                            // showMessage({
+                            //     message: "Notificación",
+                            //     description: "Descripción bloqueada",
+                            //     type: "danger", // Puede ser "success", "warning", "danger", "info"
+                            //     icon: "danger",
+                            //     floating: true, // Le da un diseño más moderno flotante con bordes redondeados
+                            // });
+                            setIsAlertVisible(true);
+                        }}
                     >
                         <Text style={[styles.decisionText, isConforme === true && styles.textActive]}>Conforme</Text>
                     </TouchableOpacity>
@@ -95,14 +118,26 @@ export default function PhotoPreviewScreen() {
                         style={[styles.decisionButton, isConforme === false && styles.noConformeActive]}
                         onPress={() => {
                             setIsConforme(false);
-                            handleNotConforme(); // Regresa de inmediato a la cámara
+                            setDescription('');
+                            handleNotConforme();
+                            setIsAlertVisible(false);
                         }}
                     >
                         <Text style={[styles.decisionText, isConforme === false && styles.textActive]}>No conforme</Text>
                     </TouchableOpacity>
+
+                    <CustomAlert
+                        visible={isAlertVisible}
+                        appName="Yhoma Reportes"
+                        appIconSource={require('../assets/images/app-logo.png')}
+                        title='Foto Conforme'
+                        message='Descripción guardada correctamente.'
+
+                        onClose={() => setIsAlertVisible(false)}
+                        onAccept={handleOnAmazonAccept}
+                    />
                 </View>
 
-                {/* Pie de página con textos informativos y botón de avanzar */}
                 <View style={styles.footerRow}>
                     <View>
                         <Text style={styles.locationTitle}>Uchucchacua</Text>
@@ -180,7 +215,7 @@ const styles = StyleSheet.create({
         borderColor: '#E0E0E0',
     },
     conformeActive: {
-        backgroundColor: '#8B1E24', // Tono rojo corporativo oscuro estilo Yhoma
+        backgroundColor: '#8B1E24',
         borderColor: '#8B1E24',
     },
     noConformeActive: {
@@ -223,5 +258,22 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 20,
         fontWeight: 'bold',
+    },
+
+    mainButton: {
+        backgroundColor: '#007aff',
+        paddingVertical: 16,
+        paddingHorizontal: 28,
+        borderRadius: 14,
+        shadowColor: '#007aff',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+    },
+
+    mainButtonText: {
+        color: '#ffffff',
+        fontSize: 18,
+        fontWeight: '600',
     },
 });

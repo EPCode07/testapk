@@ -17,7 +17,7 @@ export default function SyncStatusBanner() {
         </>
       ) : (
         <Text style={styles.text}>
-          Sin conexión · {pendingCount} foto(s) pendiente(s) por subir
+          Sin conexión · {pendingCount} foto(s) por subir
         </Text>
       )}
     </View>
@@ -31,7 +31,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 999,
-    backgroundColor: 'rgba(0,0,0,0.85)',
+    backgroundColor: '#8B1E22',
     paddingVertical: 8,
     paddingHorizontal: 16,
     flexDirection: 'row',

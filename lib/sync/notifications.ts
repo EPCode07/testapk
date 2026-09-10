@@ -36,8 +36,9 @@ export async function notifySyncStarted(count: number) {
   return await Notifications.scheduleNotificationAsync({
     content: {
       title: '📤 Sincronizando fotos',
-      body: `Subiendo ${count} foto(s) a Supabase...`,
+      body: `Subiendo ${count} foto(s) ...`,
       data: { type: 'sync_started' },
+
     },
     trigger: null,
   });
