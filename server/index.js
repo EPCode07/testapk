@@ -188,7 +188,6 @@ app.get('/listfiltereddate', checkAuth, async (req, res) => {
   }
 });
 
-
 app.get('/report-word', checkAuth, async (req, res) => {
   try {
     // 1. Datos de Supabase
@@ -214,29 +213,36 @@ app.get('/report-word', checkAuth, async (req, res) => {
       })
     );
 
-    // 3. NUEVO: agrupar de 2 en 2 para la grilla
+    // 3. Agrupar de 2 en 2 (cada "fila" = una hoja, foto1 arriba y foto2 abajo)
     const filas = [];
     for (let i = 0; i < fotos.length; i += 2) {
       const f1 = fotos[i];
       const f2 = fotos[i + 1]; // Puede ser undefined si es impar
 
       filas.push({
-        // Columna Izquierda (Siempre existe si i < fotos.length)
+        // Imagen de arriba (siempre existe si i < fotos.length)
         foto1: f1 ? f1.foto : null,
         num1: f1 ? f1.num : '',
         descripcion1: f1 ? f1.descripcion : '',
         fecha1: f1 ? f1.fecha_foto : '',
 
-        // Control para la Columna Derecha
+        // Control para la imagen de abajo
         tiene2: !!f2,
 
-        // Columna Derecha (Solo si existe f2)
+        // Imagen de abajo (solo si existe f2)
         foto2: f2 ? f2.foto : null,
         num2: f2 ? f2.num : '',
         descripcion2: f2 ? f2.descripcion : '',
-        fecha2: f2 ? f2.fecha_foto : ''
+        fecha2: f2 ? f2.fecha_foto : '',
       });
     }
+
+    // 3.1 NUEVO: marcar con saltoPagina=true todas las filas MENOS la última,
+    // para que el salto de página de la plantilla no deje una hoja en blanco al final.
+    const totalFilas = filas.length;
+    filas.forEach((fila, index) => {
+      fila.saltoPagina = index < totalFilas - 1;
+    });
 
     // 4. Cargar plantilla
     const templatePath = path.resolve(__dirname, 'plantillas/plantilla.docx');
@@ -247,7 +253,9 @@ app.get('/report-word', checkAuth, async (req, res) => {
     const imageModule = new ImageModule({
       centered: false,
       getImage: (tagValue) => Buffer.from(tagValue, 'base64'),
-      getSize: () => [220, 275],
+      // 320x400 mantiene la proporción real de tus fotos (4:5), solo más grande
+      // que antes (220x275) ya que ahora van apiladas, no lado a lado.
+      getSize: () => [320, 400],
     });
 
     const doc = new Docxtemplater(zip, {
@@ -256,11 +264,11 @@ app.get('/report-word', checkAuth, async (req, res) => {
       linebreaks: true,
     });
 
-    // 6. ACTUALIZADO: render con 'filas'
+    // 6. Render con 'filas' (ya incluye saltoPagina en cada objeto)
     doc.render({
       responsable: 'Nombre del responsable',
       fecha: new Date().toLocaleDateString('es-PE'),
-      filas, // ← antes era photos: fotos
+      filas,
     });
 
     // 7. Enviar
@@ -268,7 +276,6 @@ app.get('/report-word', checkAuth, async (req, res) => {
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     res.setHeader('Content-Disposition', 'attachment; filename="reporte_fotografico.docx"');
     res.send(buffer);
-
   } catch (error) {
     console.error('Error generando Word:', error);
     res.status(500).json({ error: 'Error al generar', detail: error.message });
