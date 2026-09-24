@@ -1,28 +1,30 @@
 {
   "expo": {
-    "name": "TestApk",
-    "slug": "TestApk",
+    "name": "Yhoma Reportes",
+    "slug": "yhoma-reportes",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/my-icon.png",
-    "scheme": "testapk",
+    "icon": "./assets/images/icon.png",
+    "scheme": "yhomareportes",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/app-logo.png",
-        "backgroundColor": "#000000"
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.herooftime.TestApk",
+      "package": "pe.yhoma.reportes",
       "permissions": [
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
         "POST_NOTIFICATIONS",
-        "RECEIVE_BOOT_COMPLETED"
+        "RECEIVE_BOOT_COMPLETED",
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT"
       ]
     },
     "web": {
@@ -71,10 +73,10 @@
           "color": "#ffffff"
         }
       ],
-      "expo-background-fetch",
       "expo-task-manager",
       "expo-sharing",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-background-task"
     ],
     "experiments": {
       "typedRoutes": true,

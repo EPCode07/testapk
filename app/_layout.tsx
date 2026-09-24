@@ -1,22 +1,36 @@
-import { useEffect } from 'react';
+import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect } from 'react';
+import FlashMessage from 'react-native-flash-message';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SyncProvider } from '../lib/sync/SyncContext';
 import { registerBackgroundSync } from '../lib/sync/backgroundTask';
-import FlashMessage from 'react-native-flash-message';
+
+SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    'Poppins-Regular': require('../assets/fonts/Poppins-Regular.ttf'),
+    'Poppins-SemiBold': require('../assets/fonts/Poppins-SemiBold.ttf'),
+    'Poppins-Bold': require('../assets/fonts/Poppins-Bold.ttf'),
+  });
+
   useEffect(() => {
     registerBackgroundSync();
   }, []);
 
+  useEffect(() => {
+    if (fontsLoaded) SplashScreen.hideAsync();
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) return null;
+
   return (
     <SafeAreaProvider>
       <SyncProvider>
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#e2e8f0' }} edges={['top', 'bottom']}>
-          <FlashMessage position="top" />
-          <Stack screenOptions={{ headerShown: false }} />
-        </SafeAreaView>
+        <FlashMessage position="top" />
+        <Stack screenOptions={{ headerShown: false }} />
       </SyncProvider>
     </SafeAreaProvider>
   );
