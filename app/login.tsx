@@ -19,8 +19,6 @@ import {
 } from 'react-native';
 import { showMessage } from 'react-native-flash-message';
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as SecureStore from 'expo-secure-store';
 import CustomAlert from '../components/CustomAlert';
 import { authService, AuthUser } from '../lib/user/authService';
 import { biometricService } from '../lib/user/biometricService';
@@ -41,8 +39,6 @@ export default function LoginScreen() {
     const [biometricType, setBiometricType] = useState('Biometría');
 
     const [alert, setAlert] = useState({ visible: false, title: '', message: '' });
-
-    // Al montar: decidir qué modo mostrar
     useEffect(() => {
         (async () => {
             const available = await biometricService.isAvailable();
@@ -54,16 +50,8 @@ export default function LoginScreen() {
             setBiometricAvailable(available);
             setBiometricEnabled(enabled);
             setBiometricType(type);
-            // 👇 AQUÍ
-            console.log('🔍 LOGIN DEBUG:', {
-                available,
-                enabled,
-                type,
-                storedUser: storedUser ? storedUser.email : null,
-                hasToken,
-            });
-            // ¿Modo welcome-back? → hay usuario + biometría activa + token válido
-            if (storedUser && enabled && hasToken) {
+
+            if (storedUser && enabled) {
                 setSavedUser(storedUser);
                 setEmail(storedUser.email);
                 setMode('welcome-back');
@@ -71,10 +59,7 @@ export default function LoginScreen() {
                 setMode('full-login');
                 if (storedUser?.email) setEmail(storedUser.email);
             }
-            const rawToken = await SecureStore.getItemAsync('auth_token');
-            const rawUser = await AsyncStorage.getItem('auth_user');
-            console.log('🔑 RAW token:', rawToken);
-            console.log('👤 RAW user:', rawUser);
+
         })();
     }, []);
 
@@ -93,7 +78,6 @@ export default function LoginScreen() {
             setLoading(true);
             const user = await authService.login(email, password);
             await setUsuario(user.name);
-            // Si la biometría está disponible y aún no está activada, preguntar
             if (biometricAvailable && !biometricEnabled) {
                 setTimeout(() => askEnableBiometric(user), 400);
             }
@@ -105,6 +89,7 @@ export default function LoginScreen() {
             });
 
             router.replace('/(tabs)' as any);
+
         } catch (err: any) {
             setAlert({
                 visible: true,
@@ -116,7 +101,6 @@ export default function LoginScreen() {
         }
     };
 
-    // ============ LOGIN RÁPIDO (solo password) ============
     const handleQuickLogin = async () => {
         if (!password) {
             setAlert({
@@ -245,12 +229,14 @@ export default function LoginScreen() {
 
                 <KeyboardAvoidingView
                     style={{ flex: 1 }}
-                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
                 >
                     <ScrollView
-                        contentContainerStyle={styles.scrollContent}
+                        contentContainerStyle={[styles.scrollContent, { flexGrow: 1 }]}
                         showsVerticalScrollIndicator={false}
                         keyboardShouldPersistTaps="handled"
+                        keyboardDismissMode="on-drag"
                     >
                         {/* Header: icono + REPORTES */}
                         <View style={styles.topBrand}>
@@ -292,7 +278,6 @@ export default function LoginScreen() {
                                                 secureTextEntry={!showPassword}
                                                 value={password}
                                                 onChangeText={setPassword}
-                                                autoFocus
                                             />
                                             <TouchableOpacity
                                                 onPress={() => setShowPassword((v) => !v)}
@@ -311,11 +296,10 @@ export default function LoginScreen() {
                                             style={styles.forgotWrapper}
                                         >
                                             <Text style={styles.forgot}>
-                                                ¿No eres tú? Cambiar de usuario
+                                                ¿No es tu usuario? Cambiar de usuario
                                             </Text>
                                         </TouchableOpacity>
 
-                                        {/* Fila: [Iniciar Sesión] [👆] */}
                                         <View style={styles.rowButtons}>
                                             <TouchableOpacity
                                                 style={[
@@ -343,10 +327,10 @@ export default function LoginScreen() {
                                                     disabled={loading}
                                                     activeOpacity={0.85}
                                                 >
-                                                    <Ionicons
-                                                        name="finger-print-outline"
-                                                        size={26}
-                                                        color="#7A1C1C"
+                                                    <Image
+                                                        source={require('../assets/images/Login/icon-biometric.png')}
+                                                        style={styles.biometricIcon}
+                                                        resizeMode="contain"
                                                     />
                                                 </TouchableOpacity>
                                             )}
@@ -466,7 +450,6 @@ const styles = StyleSheet.create({
         paddingBottom: 40,
     },
 
-    // Header superior
     topBrand: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -486,10 +469,10 @@ const styles = StyleSheet.create({
         fontSize: 36,
         fontWeight: '700',
         letterSpacing: 1.5,
+        lineHeight: 58,
         textAlign: 'center',
     },
 
-    // Card semitransparente
     card: {
         borderColor: 'rgba(255, 255, 255, 1)',
         overflow: 'hidden',
@@ -565,8 +548,10 @@ const styles = StyleSheet.create({
     },
 
     primaryBtn: {
-        backgroundColor: '#8B1E24',
+        backgroundColor: '#6D0B10',
         borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#B5121B',
         paddingVertical: 14,
         justifyContent: 'center',
         alignItems: 'center',
@@ -579,7 +564,6 @@ const styles = StyleSheet.create({
         letterSpacing: 0.3,
     },
 
-    // NUEVOS: fila de botones + botón cuadrado de huella
     rowButtons: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -587,14 +571,19 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     biometricSquareBtn: {
-        width: 52,
-        height: 52,
+        width: 50,
+        height: 50,
         borderRadius: 10,
         borderWidth: 2,
-        borderColor: '#7A1C1C',
-        backgroundColor: '#FFFFFF',
+        borderColor: '#B5121B',
+        backgroundColor: '#6D0B10',
         justifyContent: 'center',
         alignItems: 'center',
+    },
+
+    biometricIcon: {
+        width: 32,
+        height: 32,
     },
 
     footerVersion: {

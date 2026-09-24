@@ -18,6 +18,7 @@ export interface AuthUser {
         apellidos: string;
         cargo: string;
         foto: string | null;
+        telefono: string | null;
     } | null;
     roles: string[];
     permissions: string[];
@@ -33,20 +34,15 @@ export const authService = {
             },
             body: JSON.stringify({ email, password, device_name: 'mobile' }),
         });
-
         const json = await res.json();
 
+
         if (!res.ok || !json.success) {
-            const msg =
-                json.message ||
-                json.errors?.email?.[0] ||
-                'No se pudo iniciar sesión';
+            const msg = json.message || json.errors?.email?.[0] || 'No se pudo iniciar sesión';
             throw new Error(msg);
         }
-
         await setToken(json.token);
         await setAuthUser(json.user);
-
         return json.user;
     },
 
@@ -90,16 +86,15 @@ export const authService = {
                     },
                 });
             } catch {
-                // ignorar error de red
             }
         }
 
-        await this.clearSession();
+        await SecureStore.deleteItemAsync(TOKEN_KEY);
+        await AsyncStorage.removeItem(USER_KEY);
     },
 
     async clearSession(): Promise<void> {
         await SecureStore.deleteItemAsync(TOKEN_KEY);
-        await AsyncStorage.removeItem(USER_KEY);
     },
 
     async getToken(): Promise<string | null> {

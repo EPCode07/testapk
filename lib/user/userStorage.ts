@@ -4,10 +4,9 @@ import * as SecureStore from 'expo-secure-store';
 // ============================================
 // Claves
 // ============================================
-const USUARIO_KEY = 'app_usuario_actual';   // 👈 el de antes (nombre)
+const USUARIO_KEY = 'app_usuario_actual';
 const TOKEN_KEY = 'auth_token';
 const AUTH_USER_KEY = 'auth_user';
-
 // ============================================
 // Nombre del usuario (compatibilidad con TabScreen)
 // ============================================
@@ -60,5 +59,4 @@ export async function clearAuthUser(): Promise<void> {
 export async function clearSession(): Promise<void> {
     await clearToken();
     await clearAuthUser();
-    // No borres USUARIO_KEY aquí, para que el nombre quede por si vuelve
 }

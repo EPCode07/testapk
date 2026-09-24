@@ -1,8 +1,7 @@
-import { Ionicons, Octicons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
-  ActivityIndicator,
   Image,
   Modal,
   ScrollView,
@@ -29,14 +28,23 @@ import { useCallback } from 'react';
 
 import { useFocusEffect } from 'expo-router';
 
-import { authService } from '@/lib/user/authService';
-import { clearAuthUser, getUsuario } from '../../lib/user/userStorage';
+import { clearAuthUser } from '../../lib/user/userStorage';
 
+import { authService, AuthUser } from '@/lib/user/authService';
+
+import AppBottomNav from '../../components/AppBottomNav';
+import AppHeader from '../../components/AppHeader';
+
+import { SyncNetwork, syncPreferences } from '../../lib/sync/syncPreferences';
+
+import { getUsuario } from '../../lib/user/userStorage';
 
 export default function TabScreen() {
 
   const insets = useSafeAreaInsets();
   const netInfo = useNetInfo();
+
+  const [alert, setAlert] = useState({ visible: false, title: '', message: '' });
 
   const { isSyncing, isOnline, pendingCount } = useSync();
 
@@ -46,8 +54,11 @@ export default function TabScreen() {
   const [generando, setGenerando] = useState(false);
   const [isAlertVisible, setIsAlertVisible] = useState(false);
 
+  const [user, setUser] = useState<AuthUser | null>(null);
+
   const [usuario, setUsuario] = useState<string | null>(null);
 
+  const [syncNetwork, setSyncNetwork] = useState<SyncNetwork>('wifi');
 
   const syncStatusText = isSyncing
     ? "Sincronizando..."
@@ -84,7 +95,22 @@ export default function TabScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      getUsuario().then(setUsuario);
+      (async () => {
+        // 1. Nombre del usuario (legacy)
+        getUsuario().then(setUsuario);
+
+        // 2. Preferencia de red
+        const pref = await syncPreferences.getNetwork();
+        setSyncNetwork(pref);
+
+        // 3. Usuario en caché
+        const cached = await authService.getStoredUser();
+        if (cached) setUser(cached);
+
+        // 4. Refrescar desde backend (silencioso)
+        const fresh = await authService.me();
+        if (fresh) setUser(fresh);
+      })();
     }, [])
   );
 
@@ -94,6 +120,25 @@ export default function TabScreen() {
       handleGenerateWithAsset();
     } else if (action === 'download') {
       handleDownloadWord();
+    }
+  };
+
+  const handleRefreshProfile = async () => {
+    setMenuVisible(false);
+    const fresh = await authService.me();
+    if (fresh) {
+      setUser(fresh);
+      setAlert({
+        visible: true,
+        title: 'Actualizado',
+        message: 'Perfil actualizado correctamente',
+      });
+    } else {
+      setAlert({
+        visible: true,
+        title: 'Error',
+        message: 'No se pudo actualizar el perfil',
+      });
     }
   };
 
@@ -108,7 +153,7 @@ export default function TabScreen() {
       }
 
 
-      const response = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/listall?usuario=${usuario}`, {
+      const response = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/listall?usuario=${user}`, {
         headers: {
           'x-api-secret': process.env.EXPO_PUBLIC_API_SECRET ?? ''
         },
@@ -165,106 +210,11 @@ export default function TabScreen() {
     <SafeAreaView style={styles.container} edges={["top"]}>
       <StatusBar barStyle="dark-content" backgroundColor="#D8DCE0" />
 
-      <View style={styles.header}>
-        <View style={styles.brandContainer}>
-          <View style={styles.logoBox}>
-            <Image source={require('../../assets/images/app-logo.png')} style={styles.topLogo} resizeMode="contain" />
-          </View>
-          <View style={styles.brandTitleContainer}>
-            <Text style={styles.brandTitle}>REPORTES</Text>
-            <Text style={styles.brandSubtitle}>Yhoma Reportes V1.0</Text>
-          </View>
-        </View>
-
-        <View style={styles.headerIcons}>
-          <TouchableOpacity
-            style={styles.iconBtn}
-            onPress={() => {
-              try {
-                console.log('🚀 Intentando navegar a /camera...');
-                router.push('/camera');
-              } catch (error) {
-                console.error('❌ Error atrapado en navegación:', error);
-              }
-            }}
-          >
-            <Ionicons name="camera-outline" size={22} color="#333333" />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.iconBtn}>
-            <Ionicons name="notifications-outline" size={22} color="#333333" />
-          </TouchableOpacity>
-
-          {/* <TouchableOpacity
-            style={styles.iconBtn}
-            onPress={handleGenerateWithAsset}
-          >
-            <Ionicons name="document-text-outline" size={22} color="#333333" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.iconBtn}
-            onPress={handleDownloadWord}
-            disabled={generando}
-          >
-            {generando ? (
-              <ActivityIndicator size="small" color="#333333" />
-            ) : (
-              <Ionicons name="document-outline" size={22} color="#333333" />
-            )}
-          </TouchableOpacity> */}
-
-          <TouchableOpacity
-            style={styles.iconBtn}
-            onPress={() => setMenuVisible(true)}
-            disabled={generando}
-          >
-            {generando ? (
-              <ActivityIndicator size="small" color="#333333" />
-            ) : (
-              <Ionicons name="ellipsis-vertical" size={22} color="#333333" />
-            )}
-          </TouchableOpacity>
-
-          {/* Menú desplegable usando Modal */}
-          <Modal
-            visible={menuVisible}
-            transparent={true}
-            animationType="fade"
-            onRequestClose={() => setMenuVisible(false)}
-          >
-            <TouchableOpacity
-              style={styles.modalOverlay}
-              activeOpacity={1}
-              onPress={() => setMenuVisible(false)}
-            >
-              <View style={styles.menuContainer}>
-
-                {/* Opción 1: Generar con Asset */}
-                <TouchableOpacity
-                  style={styles.menuItem}
-                  onPress={() => handleOptionSelect('asset')}
-                >
-                  <Ionicons name="document-text-outline" size={20} color="#8B1E24" style={styles.menuIcon} />
-                  <Text style={styles.menuText}>Descargar PDF</Text>
-                </TouchableOpacity>
-
-                <View style={styles.separator} />
-
-                {/* Opción 2: Descargar Word */}
-                <TouchableOpacity
-                  style={styles.menuItem}
-                  onPress={() => handleOptionSelect('download')}
-                >
-                  <Ionicons name="document-outline" size={20} color="#114ccbff" style={styles.menuIcon} />
-                  <Text style={styles.menuText}>Descargar Word</Text>
-                </TouchableOpacity>
-
-              </View>
-            </TouchableOpacity>
-          </Modal>
-        </View>
-      </View>
+      <AppHeader
+        variant='main'
+        showMenuButton={true}
+        onMenuPress={() => setMenuVisible(true)}
+      />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
@@ -275,14 +225,25 @@ export default function TabScreen() {
             style={styles.itemRow}
             onPress={() => router.push('/set-usuario' as any)}
           >
-            <View style={styles.itemIconContainer}>
-              <Ionicons name="person-outline" size={20} color="#333" />
+            <View style={styles.itemRow}>
+              {user?.personal?.foto ? (
+                <Image
+                  source={{
+                    uri: `${process.env.EXPO_PUBLIC_BACKEND_URL}/storage/${user.personal.foto}`,
+                  }}
+                  style={styles.avatar}
+                />
+              ) : (
+                <View style={styles.itemIconContainer}>
+                  <Ionicons name="person-outline" size={20} color="#333" />
+                </View>
+              )}
+              <View style={styles.itemTextContainer}>
+                <Text style={styles.itemLabel}>NOMBRE</Text>
+                <Text style={styles.itemValue}>{user?.name ?? '—'}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#666" />
             </View>
-            <View style={styles.itemTextContainer}>
-              <Text style={styles.itemLabel}>NOMBRE</Text>
-              <Text style={styles.itemValue}>{usuario ?? '—'}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#666" />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.itemRow}>
@@ -291,7 +252,7 @@ export default function TabScreen() {
             </View>
             <View style={styles.itemTextContainer}>
               <Text style={styles.itemLabel}>CELULAR</Text>
-              <Text style={styles.itemValue}>+51 987 654 321</Text>
+              <Text style={styles.itemValue}>{user?.personal?.telefono ?? '—'}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#666" />
           </TouchableOpacity>
@@ -304,7 +265,7 @@ export default function TabScreen() {
             </View>
             <View style={styles.itemTextContainer}>
               <Text style={styles.itemLabel}>CORREO</Text>
-              <Text style={styles.itemValue}>nombreapellido@yhoma.pe</Text>
+              <Text style={styles.itemValue}>{user?.email ?? '—'}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#666" />
           </TouchableOpacity>
@@ -317,14 +278,17 @@ export default function TabScreen() {
             </View>
             <View style={styles.itemTextContainer}>
               <Text style={styles.itemLabel}>ÁREA</Text>
-              <Text style={styles.itemValue}>Operaciones</Text>
+              <Text style={styles.itemValue}>{user?.area ?? '—'}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#666" />
           </TouchableOpacity>
 
           <View style={styles.divider} />
 
-          <TouchableOpacity style={styles.itemRow}>
+          <TouchableOpacity
+            style={styles.itemRow}
+            onPress={() => router.push('/seguridad' as any)}
+          >
             <View style={styles.itemIconContainer}>
               <Ionicons name="key-outline" size={20} color="#333" />
             </View>
@@ -340,10 +304,13 @@ export default function TabScreen() {
         <View style={styles.card}>
           <Text style={styles.cardSectionTitle}>Almacenamiento</Text>
 
-          <TouchableOpacity style={styles.itemRow}>
+          <TouchableOpacity
+            style={styles.itemRow}
+            onPress={() => router.push('/sincronizacion' as any)}
+          >
             <View style={styles.itemIconContainer}>
               <Ionicons
-                name={isConnected ? "sync-outline" : "cloud-offline-outline"}
+                name={syncNetwork === 'wifi' ? 'wifi-outline' : 'cellular-outline'}
                 size={20}
                 color={statusColor}
               />
@@ -351,7 +318,7 @@ export default function TabScreen() {
             <View style={styles.itemTextContainer}>
               <Text style={styles.itemLabel}>SINCRONIZACIÓN</Text>
               <Text style={[styles.itemValue, !isConnected && styles.textOffline]}>
-                {getConnectionLabel()}
+                {syncNetwork === 'wifi' ? 'Solo WiFi' : 'WiFi y datos móviles'}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#666" />
@@ -380,39 +347,63 @@ export default function TabScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Botón Cerrar Sesión */}
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={20} color="#7A1C1C" />
           <Text style={styles.logoutText}>Cerrar Sesión</Text>
         </TouchableOpacity>
 
-        {/* Footer Text */}
         <Text style={styles.footerVersion}>Yhoma Reportes V1.0</Text>
 
       </ScrollView>
 
-      {/* Navegación Inferior (Bottom Bar) */}
-      <View style={[styles.bottomNav, { paddingBottom: insets.bottom || 10 }]}>
-        <TouchableOpacity style={styles.navItem}>
-          <Octicons name="home" size={22} color="#555" />
-          <Text style={styles.navLabel}>Home</Text>
-        </TouchableOpacity>
+      <AppBottomNav active="inicio" />
 
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="location-outline" size={22} color="#555" />
-          <Text style={styles.navLabel}>Mapa</Text>
-        </TouchableOpacity>
+      <Modal
+        visible={menuVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setMenuVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setMenuVisible(false)}
+        >
+          <View style={styles.menuContainer}>
 
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="image-outline" size={22} color="#555" />
-          <Text style={styles.navLabel}>Galería</Text>
-        </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleOptionSelect('asset')}
+            >
+              <Ionicons name="document-text-outline" size={20} color="#8B1E24" style={styles.menuIcon} />
+              <Text style={styles.menuText}>Descargar PDF</Text>
+            </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="settings-sharp" size={22} color="#7A1C1C" />
-          <Text style={[styles.navLabel, styles.navLabelActive]}>Ajustes</Text>
+            <View style={styles.separator} />
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleOptionSelect('download')}
+            >
+              <Ionicons name="document-outline" size={20} color="#114ccbff" style={styles.menuIcon} />
+              <Text style={styles.menuText}>Descargar Word</Text>
+            </TouchableOpacity>
+
+
+            <View style={styles.separator} />
+
+            {/* Opción 3: Refrescar datos del perfil */}
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={handleRefreshProfile}
+            >
+              <Ionicons name="refresh-outline" size={20} color="#2E7D32" style={styles.menuIcon} />
+              <Text style={styles.menuText}>Refrescar datos</Text>
+            </TouchableOpacity>
+          </View>
         </TouchableOpacity>
-      </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -444,8 +435,6 @@ const styles = StyleSheet.create({
   },
   logoBox: {
     backgroundColor: '#ffffffff',
-    // padding: 8,
-    // borderRadius: 10,
     marginRight: 10,
   },
   brandTitleContainer: {
@@ -493,6 +482,13 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 8,
     marginRight: 12,
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+    backgroundColor: '#CCCCCC',   // fondo mientras carga
   },
   itemTextContainer: {
     flex: 1,
