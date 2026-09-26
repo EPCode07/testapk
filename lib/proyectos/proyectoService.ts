@@ -16,6 +16,8 @@ export interface Proyecto {
     cliente: string;
     ubicacion: string | null;
     estado: EstadoProyecto;
+    latitud: number | null;
+    longitud: number | null;
     progreso: number;
     estaciones_count: number;
     fecha_inicio: string | null;

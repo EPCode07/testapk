@@ -27,7 +27,8 @@ export default function AppBottomNav({ active }: Props) {
                 </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.navItem}>
+            <TouchableOpacity style={styles.navItem}
+                onPress={() => router.replace('/(tabs)/mapa' as any)}>
                 <Ionicons name="location-outline" size={22} color={color('mapa')} />
                 <Text style={[styles.navLabel, isActive('mapa') && styles.navLabelActive]}>
                     Mapa

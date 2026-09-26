@@ -24,7 +24,9 @@
         "POST_NOTIFICATIONS",
         "RECEIVE_BOOT_COMPLETED",
         "USE_BIOMETRIC",
-        "USE_FINGERPRINT"
+        "USE_FINGERPRINT",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
       ]
     },
     "web": {
@@ -84,7 +86,13 @@
       "expo-sharing",
       "expo-secure-store",
       "expo-background-task",
-      "@maplibre/maplibre-react-native"
+      "@maplibre/maplibre-react-native",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Permite a $(PRODUCT_NAME) acceder a tu ubicación para mostrarte en el mapa y detectar proyectos cercanos."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

@@ -95,6 +95,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         flex: 1,
+        backgroundColor: "#fff"
     },
     backBtn: {
         padding: 6,
@@ -103,8 +104,9 @@ const styles = StyleSheet.create({
     brandContainer: {
         flexDirection: 'row',
         alignItems: 'center',
+        backgroundColor: "#fff",
     },
-    logoBox: { marginRight: 10 },
+    logoBox: { marginRight: 10, backgroundColor: "#fff", },
     topLogo: { width: 40, height: 40, backgroundColor: "#fff", },
     brandTitleContainer: { justifyContent: 'center' },
     brandTitle: {
