@@ -22,12 +22,11 @@ export async function requestNotificationPermissions(): Promise<boolean> {
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('sync', {
       name: 'Sincronización de Datos',
-      importance: Notifications.AndroidImportance.MAX,        // 👈 MAX para heads-up seguro
+      importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#4DA6FF',
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-      bypassDnd: true,                                         // 👈 opcional
-      sound: 'default',
+      bypassDnd: true,
     });
   }
 
@@ -40,8 +39,7 @@ export async function notifySyncStarted(count: number) {
       title: '📤 Sincronizando fotos',
       body: `Subiendo ${count} foto(s) ...`,
       data: { type: 'sync_started' },
-      priority: Notifications.AndroidNotificationPriority.MAX,  // 👈 MAX
-      sound: 'default',
+      priority: Notifications.AndroidNotificationPriority.MAX,
     },
     trigger: null,
   });
@@ -57,8 +55,7 @@ export async function notifySyncFinished(uploaded: number, failed: number) {
         ? `${uploaded} subida(s), ${failed} fallida(s). Reintentando luego.`
         : `Se subieron ${uploaded} foto(s) a la nube correctamente.`,
       data: { type: 'sync_finished', uploaded, failed },
-      priority: Notifications.AndroidNotificationPriority.MAX,  // 👈 MAX
-      sound: 'default',
+      priority: Notifications.AndroidNotificationPriority.MAX,
     },
     trigger: null,
   });

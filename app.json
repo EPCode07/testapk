@@ -34,6 +34,13 @@
     "plugins": [
       "expo-router",
       [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Permite a $(PRODUCT_NAME) acceder al micrófono para el dictado por voz.",
+          "speechRecognitionPermission": "Permite a $(PRODUCT_NAME) usar el reconocimiento de voz para transcribir tus búsquedas."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",
@@ -76,7 +83,8 @@
       "expo-task-manager",
       "expo-sharing",
       "expo-secure-store",
-      "expo-background-task"
+      "expo-background-task",
+      "@maplibre/maplibre-react-native"
     ],
     "experiments": {
       "typedRoutes": true,

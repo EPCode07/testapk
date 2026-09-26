@@ -43,7 +43,7 @@ export default function AppBottomNav({ active }: Props) {
 
             <TouchableOpacity
                 style={styles.navItem}
-                onPress={() => router.push('/seguridad' as any)}
+                onPress={() => router.replace('/(tabs)/ajustes' as any)}
             >
                 <Ionicons name="settings-sharp" size={22} color={color('ajustes')} />
                 <Text style={[styles.navLabel, isActive('ajustes') && styles.navLabelActive]}>
@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
     bottomNav: {
         flexDirection: 'row',
         justifyContent: 'space-around',
-        backgroundColor: '#D8DCE0',
+        backgroundColor: '#ffffff',
         paddingVertical: 10,
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,

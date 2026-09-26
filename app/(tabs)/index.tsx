@@ -1,606 +1,546 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   Image,
-  Modal,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
+import { showMessage } from 'react-native-flash-message';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-
-import { useSync } from '../../lib/sync/SyncContext';
-
-import { useNetInfo } from '@react-native-community/netinfo';
-
-import { downloadWordReport, generatePhotoReportPDF } from '../utils/reportGenerator';
-
-import { Asset } from 'expo-asset';
-
-import CustomAlert from '../../components/CustomAlert';
-
-import { useCallback } from 'react';
-
-import { useFocusEffect } from 'expo-router';
-
-import { clearAuthUser } from '../../lib/user/userStorage';
-
-import { authService, AuthUser } from '@/lib/user/authService';
-
+import {
+  ExpoSpeechRecognitionModule,
+  useSpeechRecognitionEvent,
+} from 'expo-speech-recognition';
 import AppBottomNav from '../../components/AppBottomNav';
 import AppHeader from '../../components/AppHeader';
+import EstadoIcon from '../../components/EstadoIcon';
+import { EstadoProyecto, Proyecto, proyectoService } from '../../lib/proyectos/proyectoService';
 
-import { SyncNetwork, syncPreferences } from '../../lib/sync/syncPreferences';
 
-import { getUsuario } from '../../lib/user/userStorage';
+const FOTO_DEFAULT = 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800';
 
-export default function TabScreen() {
+const ESTADOS_CONFIG: Record<EstadoProyecto, { label: string }> = {
+  iniciar: { label: 'Pendiente' },
+  en_progreso: { label: 'En progreso' },
+  retrasada: { label: 'Retrasada' },
+  observada: { label: 'Observado' },
+  completado: { label: 'Completado' },
+};
 
-  const insets = useSafeAreaInsets();
-  const netInfo = useNetInfo();
+const FILTROS: Array<{ key: string; label: string }> = [
+  { key: 'todos', label: 'Todos' },
+  { key: 'iniciar', label: 'Pendiente' },
+  { key: 'en_progreso', label: 'En progreso' },
+  { key: 'observada', label: 'Observado' },
+  { key: 'completado', label: 'Completado' },
+];
 
-  const [alert, setAlert] = useState({ visible: false, title: '', message: '' });
+const COLORS_ESTADO = {
+  iniciar: '#D98E04',
+  en_progreso: '#2563EB',
+  retrasada: '#DC2626',
+  observada: '#6F42C1',
+  completado: '#2E8B57',
+};
 
-  const { isSyncing, isOnline, pendingCount } = useSync();
+export default function InicioScreen() {
+  const [proyectos, setProyectos] = useState<Proyecto[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [filtroActivo, setFiltroActivo] = useState('todos');
+  const [busqueda, setBusqueda] = useState('');
 
-  const hasPending = pendingCount > 0;
-  const isErrorState = !isOnline || hasPending;
+  const [isListening, setIsListening] = useState(false);
 
-  const [generando, setGenerando] = useState(false);
-  const [isAlertVisible, setIsAlertVisible] = useState(false);
+  // Escuchar los eventos de la librería
+  useSpeechRecognitionEvent('start', () => setIsListening(true));
+  useSpeechRecognitionEvent('end', () => setIsListening(false));
+  useSpeechRecognitionEvent('error', (event) => {
+    console.log('Error de reconocimiento:', event.error, event.message);
+    setIsListening(false);
+  });
 
-  const [user, setUser] = useState<AuthUser | null>(null);
+  useSpeechRecognitionEvent('result', (event) => {
+    const texto = event.results[0]?.transcript;
+    if (texto) {
+      setBusqueda(texto);
+    }
+  });
 
-  const [usuario, setUsuario] = useState<string | null>(null);
 
-  const [syncNetwork, setSyncNetwork] = useState<SyncNetwork>('wifi');
 
-  const syncStatusText = isSyncing
-    ? "Sincronizando..."
-    : !isOnline
-      ? "Sin conexión · " + pendingCount + " foto(s) por subir"
-      : hasPending
-        ? `${pendingCount} foto(s) pendiente(s)`
-        : "Estado de sincronización OK";
-
-  const syncColor = isErrorState || isSyncing ? "#C62828" : "#2E7D32";
-  const syncIconName = isSyncing
-    ? "sync-outline"
-    : !isOnline
-      ? "cloud-offline-outline"
-      : hasPending
-        ? "alert-circle-outline"
-        : "cloud-done-outline";
-
-  const getConnectionLabel = () => {
-    if (!netInfo.isConnected) return 'Sin conexión';
-    if (netInfo.type === 'wifi') return 'Wi-Fi';
-    if (netInfo.type === 'cellular') return 'Datos móviles';
-    return 'Wifi y Datos';
-  };
-
-  const handleLogout = async () => {
+  const cargarProyectos = useCallback(async (estado?: string) => {
     try {
-      await authService.logout();
-    } catch { }
-    await clearAuthUser();
-    router.replace('/login' as any);
-  };
-  const [menuVisible, setMenuVisible] = useState(false);
+      const data = await proyectoService.listar(estado);
+      setProyectos(data);
+    } catch (error: any) {
+      showMessage({
+        message: error.message ?? 'Error al cargar proyectos',
+        type: 'danger',
+        icon: 'danger',
+      });
+    } finally {
+      setCargando(false);
+    }
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      (async () => {
-        // 1. Nombre del usuario (legacy)
-        getUsuario().then(setUsuario);
-
-        // 2. Preferencia de red
-        const pref = await syncPreferences.getNetwork();
-        setSyncNetwork(pref);
-
-        // 3. Usuario en caché
-        const cached = await authService.getStoredUser();
-        if (cached) setUser(cached);
-
-        // 4. Refrescar desde backend (silencioso)
-        const fresh = await authService.me();
-        if (fresh) setUser(fresh);
-      })();
-    }, [])
+      cargarProyectos(filtroActivo === 'todos' ? undefined : filtroActivo);
+    }, [filtroActivo, cargarProyectos])
   );
 
-  const handleOptionSelect = (action: string) => {
-    setMenuVisible(false);
-    if (action === 'asset') {
-      handleGenerateWithAsset();
-    } else if (action === 'download') {
-      handleDownloadWord();
+
+  useEffect(() => {
+    const subStart = ExpoSpeechRecognitionModule.addListener('start', () => {
+      setIsListening(true);
+    });
+
+    const subEnd = ExpoSpeechRecognitionModule.addListener('end', () => {
+      setIsListening(false);
+    });
+
+    const subResult = ExpoSpeechRecognitionModule.addListener('result', (event: any) => {
+      const texto = event.results[0]?.transcript ?? '';
+      if (texto) {
+        setBusqueda(texto);
+      }
+    });
+
+    const subError = ExpoSpeechRecognitionModule.addListener('error', (event: any) => {
+      console.log('Error de voz:', event.error);
+      setIsListening(false);
+    });
+
+    return () => {
+      subStart.remove();
+      subEnd.remove();
+      subResult.remove();
+      subError.remove();
+    };
+  }, []);
+
+
+  const iniciarBusquedaPorVoz = async () => {
+    const { granted } = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    if (!granted) {
+      Alert.alert('Permiso denegado', 'Necesitamos acceso al micrófono.');
+      return;
     }
+
+    ExpoSpeechRecognitionModule.start({
+      lang: 'es-ES',
+      interimResults: false,        // 👈 mejor false para búsqueda (solo resultado final)
+      continuous: false,
+      requiresOnDeviceRecognition: false,
+    });
   };
 
-  const handleRefreshProfile = async () => {
-    setMenuVisible(false);
-    const fresh = await authService.me();
-    if (fresh) {
-      setUser(fresh);
-      setAlert({
-        visible: true,
-        title: 'Actualizado',
-        message: 'Perfil actualizado correctamente',
-      });
-    } else {
-      setAlert({
-        visible: true,
-        title: 'Error',
-        message: 'No se pudo actualizar el perfil',
-      });
-    }
+  const detenerBusquedaPorVoz = () => {
+    ExpoSpeechRecognitionModule.stop();
+    setIsListening(false);
   };
 
-  async function handleGenerateWithAsset() {
-    try {
-      const asset = Asset.fromModule(require('../assets/documentos/pdf/Formato_IT_RD_V2_02.07.26.pdf'));
-      await asset.downloadAsync();
+  // Filtrado local por búsqueda
+  const proyectosFiltrados = proyectos.filter((p) => {
+    if (busqueda.trim() === '') return true;
 
-      let baseUri = asset.localUri;
-      if (!baseUri) {
-        throw new Error('No se pudo cargar la plantilla PDF local.');
-      }
-
-
-      const response = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/listall?usuario=${user}`, {
-        headers: {
-          'x-api-secret': process.env.EXPO_PUBLIC_API_SECRET ?? ''
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Error del servidor: ${response.status}`);
-      }
-
-      const json = await response.json();
-      if (!json.success) {
-        throw new Error(json.error || 'Error consultando fotos');
-      }
-
-      const items = json.data;
-
-      if (!items || items.length === 0) {
-        console.log('No hay registros disponibles para generar el PDF.');
-        return;
-      }
-
-      await generatePhotoReportPDF(items, baseUri);
-
-    } catch (error) {
-      console.error('Error al generar el PDF con datos de Supabase:', error);
-    }
-  }
-
-  async function handleDownloadWord() {
-    setGenerando(true);
-    try {
-      await downloadWordReport();
-    } catch (error: any) {
-      <CustomAlert
-        visible={isAlertVisible}
-        appName="Yhoma Reportes"
-        appIconSource={require('../../assets/images/app-logo.png')}
-        title='Error al generar el reporte'
-        message={error.message}
-
-        onClose={() => setIsAlertVisible(false)}
-        onAccept={() => { }}
-      />
-    } finally {
-      setGenerando(false);
-    }
-  }
-
-
-  const isConnected = netInfo.isConnected;
-  const statusColor = isConnected ? '#333' : '#C62828';
+    const query = busqueda.toLowerCase().trim();
+    return (
+      p.nombre.toLowerCase().includes(query) ||
+      p.codigo.toLowerCase().includes(query) ||
+      p.cliente.toLowerCase().includes(query) ||
+      (p.ubicacion ?? '').toLowerCase().includes(query)
+    );
+  });
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#D8DCE0" />
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      <AppHeader
-        variant='main'
-        showMenuButton={true}
-        onMenuPress={() => setMenuVisible(true)}
-      />
+      <AppHeader />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
 
-        <View style={styles.card}>
-          <Text style={styles.cardSectionTitle}>Perfil</Text>
-
+        {/* Buscador */}
+        <View style={styles.searchWrapper}>
+          <Ionicons name="search-outline" size={20} color="#6B7280" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder={isListening ? '🎤 Escuchando...' : 'Buscar proyectos'}
+            placeholderTextColor={isListening ? '#B5121B' : '#9CA3AF'}
+            value={busqueda}
+            onChangeText={setBusqueda}
+            autoCorrect={false}
+          />
+          {busqueda.length > 0 && (
+            <TouchableOpacity onPress={() => setBusqueda('')}>
+              <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
-            style={styles.itemRow}
-            onPress={() => router.push('/set-usuario' as any)}
+            style={styles.searchIconBtn}
+            onPress={isListening ? detenerBusquedaPorVoz : iniciarBusquedaPorVoz}
           >
-            <View style={styles.itemRow}>
-              {user?.personal?.foto ? (
-                <Image
-                  source={{
-                    uri: `${process.env.EXPO_PUBLIC_BACKEND_URL}/storage/${user.personal.foto}`,
-                  }}
-                  style={styles.avatar}
-                />
-              ) : (
-                <View style={styles.itemIconContainer}>
-                  <Ionicons name="person-outline" size={20} color="#333" />
-                </View>
-              )}
-              <View style={styles.itemTextContainer}>
-                <Text style={styles.itemLabel}>NOMBRE</Text>
-                <Text style={styles.itemValue}>{user?.name ?? '—'}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#666" />
-            </View>
+            <Ionicons
+              name="mic-outline"
+              size={20}
+              color={isListening ? '#B5121B' : '#6B7280'}
+            />
           </TouchableOpacity>
-
-          <TouchableOpacity style={styles.itemRow}>
-            <View style={styles.itemIconContainer}>
-              <Ionicons name="call-outline" size={20} color="#333" />
-            </View>
-            <View style={styles.itemTextContainer}>
-              <Text style={styles.itemLabel}>CELULAR</Text>
-              <Text style={styles.itemValue}>{user?.personal?.telefono ?? '—'}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#666" />
-          </TouchableOpacity>
-
-          <View style={styles.divider} />
-
-          <TouchableOpacity style={styles.itemRow}>
-            <View style={styles.itemIconContainer}>
-              <Ionicons name="mail-outline" size={20} color="#333" />
-            </View>
-            <View style={styles.itemTextContainer}>
-              <Text style={styles.itemLabel}>CORREO</Text>
-              <Text style={styles.itemValue}>{user?.email ?? '—'}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#666" />
-          </TouchableOpacity>
-
-          <View style={styles.divider} />
-
-          <TouchableOpacity style={styles.itemRow}>
-            <View style={styles.itemIconContainer}>
-              <Ionicons name="briefcase-outline" size={20} color="#333" />
-            </View>
-            <View style={styles.itemTextContainer}>
-              <Text style={styles.itemLabel}>ÁREA</Text>
-              <Text style={styles.itemValue}>{user?.area ?? '—'}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#666" />
-          </TouchableOpacity>
-
-          <View style={styles.divider} />
-
-          <TouchableOpacity
-            style={styles.itemRow}
-            onPress={() => router.push('/seguridad' as any)}
-          >
-            <View style={styles.itemIconContainer}>
-              <Ionicons name="key-outline" size={20} color="#333" />
-            </View>
-            <View style={styles.itemTextContainer}>
-              <Text style={styles.itemLabel}>SEGURIDAD</Text>
-              <Text style={styles.itemValue}>Biometría, Contraseña</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#666" />
+          <TouchableOpacity style={styles.searchIconBtn}>
+            <Ionicons name="funnel-outline" size={20} color="#6B7280" />
           </TouchableOpacity>
         </View>
 
-        {/* Sección Almacenamiento */}
-        <View style={styles.card}>
-          <Text style={styles.cardSectionTitle}>Almacenamiento</Text>
+        {/* Filtros (pills) */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filtrosContainer}
+        >
+          {FILTROS.map((f) => {
+            const activo = filtroActivo === f.key;
+            return (
+              <TouchableOpacity
+                key={f.key}
+                onPress={() => setFiltroActivo(f.key)}
+                style={[styles.filtroPill, activo ? styles.filtroPillActivo : styles.filtroPillInactivo]}
+                activeOpacity={0.85}
+              >
+                <Text style={[styles.filtroText, activo ? styles.filtroTextActivo : styles.filtroTextInactivo]}>
+                  {f.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
 
-          <TouchableOpacity
-            style={styles.itemRow}
-            onPress={() => router.push('/sincronizacion' as any)}
-          >
-            <View style={styles.itemIconContainer}>
-              <Ionicons
-                name={syncNetwork === 'wifi' ? 'wifi-outline' : 'cellular-outline'}
-                size={20}
-                color={statusColor}
-              />
-            </View>
-            <View style={styles.itemTextContainer}>
-              <Text style={styles.itemLabel}>SINCRONIZACIÓN</Text>
-              <Text style={[styles.itemValue, !isConnected && styles.textOffline]}>
-                {syncNetwork === 'wifi' ? 'Solo WiFi' : 'WiFi y datos móviles'}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#666" />
-          </TouchableOpacity>
+        {/* Loading */}
+        {cargando && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#910E16" />
+          </View>
+        )}
 
-          <View style={styles.divider} />
-
-          <TouchableOpacity style={styles.itemRow}>
-            <View style={styles.itemIconContainer}>
-              <Ionicons name="trash-outline" size={20} color="#333" />
-            </View>
-            <View style={styles.itemTextContainer}>
-              <Text style={styles.itemLabel}>ELIMINAR DEL DISPOSITIVO TRAS</Text>
-              <Text style={styles.itemValue}>3 Meses</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#666" />
-          </TouchableOpacity>
-
-          <View style={styles.divider} />
-
-          <TouchableOpacity style={styles.itemRow}>
-            <Text style={[styles.syncStateText, { color: syncColor }]}>
-              {syncStatusText}
+        {/* Empty */}
+        {!cargando && proyectosFiltrados.length === 0 && (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyIcon}>📭</Text>
+            <Text style={styles.emptyText}>
+              {busqueda ? 'Sin resultados' : 'No hay proyectos'}
             </Text>
-            <Ionicons name={syncIconName} size={22} color={syncColor} />
-          </TouchableOpacity>
-        </View>
+            <Text style={styles.emptySubtext}>
+              {busqueda
+                ? `No se encontraron proyectos con "${busqueda}"`
+                : 'No tenés proyectos con este filtro'}
+            </Text>
+          </View>
+        )}
 
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={20} color="#7A1C1C" />
-          <Text style={styles.logoutText}>Cerrar Sesión</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.footerVersion}>Yhoma Reportes V1.0</Text>
-
+        {/* Lista */}
+        {!cargando && proyectosFiltrados.length > 0 && (
+          <View style={styles.listaProyectos}>
+            {proyectosFiltrados.map((p) => (
+              <TarjetaProyecto
+                key={p.id}
+                proyecto={p}
+                onPress={() => router.push(`/proyecto/${p.id}` as any)}
+              />
+            ))}
+          </View>
+        )}
       </ScrollView>
 
       <AppBottomNav active="inicio" />
-
-      <Modal
-        visible={menuVisible}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setMenuVisible(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setMenuVisible(false)}
-        >
-          <View style={styles.menuContainer}>
-
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => handleOptionSelect('asset')}
-            >
-              <Ionicons name="document-text-outline" size={20} color="#8B1E24" style={styles.menuIcon} />
-              <Text style={styles.menuText}>Descargar PDF</Text>
-            </TouchableOpacity>
-
-            <View style={styles.separator} />
-
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => handleOptionSelect('download')}
-            >
-              <Ionicons name="document-outline" size={20} color="#114ccbff" style={styles.menuIcon} />
-              <Text style={styles.menuText}>Descargar Word</Text>
-            </TouchableOpacity>
-
-
-            <View style={styles.separator} />
-
-            {/* Opción 3: Refrescar datos del perfil */}
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={handleRefreshProfile}
-            >
-              <Ionicons name="refresh-outline" size={20} color="#2E7D32" style={styles.menuIcon} />
-              <Text style={styles.menuText}>Refrescar datos</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
     </SafeAreaView>
   );
 }
 
+/* TarjetaProyecto se queda igual */
+function TarjetaProyecto({ proyecto, onPress }: { proyecto: Proyecto; onPress: () => void }) {
+  const config = ESTADOS_CONFIG[proyecto.estado] ?? ESTADOS_CONFIG.iniciar;
+  const foto = proyecto.foto_url || FOTO_DEFAULT;
+
+  return (
+    <View style={styles.card}>
+      {/* HEADER: nombre + estado + icono + flecha clickeable */}
+      <View style={styles.cardHeader}>
+        <View style={styles.cardHeaderLeft}>
+          <Text style={styles.cardNombre} numberOfLines={1}>
+            ● {proyecto.nombre}
+          </Text>
+          <Text style={[styles.cardSeparadorTexto, { color: COLORS_ESTADO[proyecto.estado] }]}>|</Text>
+          <Text style={[styles.cardEstado, { color: COLORS_ESTADO[proyecto.estado] }]}>
+            {config.label}
+          </Text>
+          <EstadoIcon estado={proyecto.estado} size={18} strokeWidth={2} />
+        </View>
+
+        {/* 👇 Solo la flecha navega */}
+        <TouchableOpacity
+          onPress={onPress}
+          hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+          style={styles.arrowBtn}
+        >
+          <Ionicons name="arrow-forward" size={22} color="#111827" />
+        </TouchableOpacity>
+      </View>
+
+      {/* BODY: foto + datos (no clickeable) */}
+      <View style={styles.cardBody}>
+        <Image source={{ uri: foto }} style={styles.cardFoto} resizeMode="cover" />
+        <View style={styles.cardDatos}>
+          <View style={styles.datoBloque}>
+            <Text style={styles.datoLabel}>CLIENTE</Text>
+            <Text style={styles.datoValor} numberOfLines={1}>{proyecto.cliente}</Text>
+          </View>
+          <View style={styles.separador} />
+          <View style={styles.datoBloque}>
+            <Text style={styles.datoLabel}>CÓDIGO</Text>
+            <Text style={styles.datoValor} numberOfLines={1}>{proyecto.codigo}</Text>
+          </View>
+          <View style={styles.separador} />
+          <View style={styles.datoBloque}>
+            <Text style={styles.datoLabel}>UBICACIÓN</Text>
+            <Text style={styles.datoValor} numberOfLines={1}>{proyecto.ubicacion ?? '—'}</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* FOOTER: progreso */}
+      <View style={styles.progresoContainer}>
+        <View style={styles.progresoBarra}>
+          <View
+            style={[
+              styles.progresoRelleno,
+              { width: `${proyecto.progreso}%`, backgroundColor: '#B5121B' },
+            ]}
+          />
+        </View>
+        <Text style={styles.progresoTexto}>{proyecto.progreso}% Completado</Text>
+      </View>
+    </View>
+  );
+}
+/* ============================================================
+   ESTILOS
+   ============================================================ */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#C8CDD0',
+    backgroundColor: '#ECEDEF',
   },
-  header: {
-    backgroundColor: '#D8DCE0',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 15,
-    paddingBottom: 15,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-  },
-  brandContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-
-  topLogo: {
-    width: 52,
-    height: 52,
-  },
-  logoBox: {
-    backgroundColor: '#ffffffff',
-    marginRight: 10,
-  },
-  brandTitleContainer: {
-    justifyContent: 'center',
-  },
-  brandTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1A1A1A',
-    letterSpacing: 0.5,
-  },
-  brandSubtitle: {
-    fontSize: 10,
-    color: '#777777',
-  },
-  headerIcons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 20,
-  },
-  card: {
-    backgroundColor: '#E2E6E8',
-    borderRadius: 20,
-    padding: 18,
-    marginBottom: 16,
-  },
-  cardSectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#7A1C1C',
-    marginBottom: 12,
-  },
-  itemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  itemIconContainer: {
-    backgroundColor: '#CCCCCC',
-    padding: 8,
-    borderRadius: 8,
-    marginRight: 12,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 12,
-    backgroundColor: '#CCCCCC',   // fondo mientras carga
-  },
-  itemTextContainer: {
-    flex: 1,
-  },
-  itemLabel: {
-    fontSize: 10,
-    color: '#888888',
-    fontWeight: '600',
-    letterSpacing: 0.5,
-  },
-  itemValue: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#222222',
-    marginTop: 2,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#D0D4D7',
-    marginVertical: 4,
-  },
-  syncStateText: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  textOffline: {
-    color: '#C62828',
-  },
-  logoutButton: {
-    borderWidth: 1.5,
-    borderColor: '#7A1C1C',
-    borderRadius: 25,
-    paddingVertical: 12,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 8,
-    backgroundColor: 'transparent',
-  },
-  logoutText: {
-    color: '#7A1C1C',
-    fontWeight: 'bold',
-    fontSize: 15,
-    marginLeft: 8,
-  },
-  footerVersion: {
-    textAlign: 'center',
-    color: '#888888',
-    fontSize: 11,
-    marginTop: 14,
-  },
-  bottomNav: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: '#D8DCE0',
-    paddingVertical: 10,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-  },
-  navItem: {
-    alignItems: 'center',
-  },
-  navLabel: {
-    fontSize: 11,
-    color: '#555555',
-    marginTop: 2,
-  },
-  navLabelActive: {
-    color: '#7A1C1C',
-    fontWeight: 'bold',
+    paddingBottom: 24,
   },
 
-  iconBtn: {
-    padding: 8,
+  // Filtros
+  filtrosContainer: {
+    gap: 8,
+    paddingBottom: 16,
+  },
+  filtroPill: {
+    borderRadius: 10,
+    height: 35,
+    paddingHorizontal: 10,
+    flexDirection: 'column',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
-    justifyContent: 'flex-start',
-    alignItems: 'flex-end',
+  filtroPillActivo: {
+    borderWidth: 2,
+    borderColor: '#B5121B',
+    backgroundColor: '#910E16',
   },
-  menuContainer: {
-    marginTop: 60,
-    marginRight: 20,
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    width: 200,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-    paddingVertical: 4,
+  filtroPillInactivo: {
+    borderWidth: 2,
+    borderColor: '#ACACAC',
+    backgroundColor: '#ECEDEF',
   },
-  menuItem: {
+  filtroText: {
+    fontFamily: 'Poppins-Regular',
+    fontSize: 13,
+    lineHeight: 16,
+  },
+  filtroTextActivo: {
+    color: '#FFFFFF',
+    fontFamily: 'Poppins-SemiBold',
+  },
+  filtroTextInactivo: {
+    color: '#374151',
+    fontFamily: 'Poppins-Regular',
+  },
+
+  // Loading / Empty
+  loadingContainer: { padding: 40, alignItems: 'center' },
+  emptyContainer: { padding: 40, alignItems: 'center' },
+  emptyIcon: { fontSize: 48, marginBottom: 8 },
+  emptyText: { fontSize: 16, fontWeight: '600', color: '#374151', fontFamily: 'Poppins-SemiBold' },
+  emptySubtext: { fontSize: 13, color: '#9CA3AF', marginTop: 4, textAlign: 'center', fontFamily: 'Poppins-Regular' },
+
+  // Lista
+  listaProyectos: {
+    gap: 14,
+  },
+
+  // CARD
+  card: {
+    width: '100%',
+    padding: 10,
+    flexDirection: 'column',
+    justifyContent: 'flex-end',
+    alignItems: 'flex-start',
+    gap: 10,
+    borderRadius: 20,
+    borderBottomWidth: 2,
+    borderBottomColor: '#DADADA',
+    backgroundColor: '#FFFFFF',
+  },
+
+  // Header
+  cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  cardHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  IconProject: {
+    color: '#910E16',
+    fontFamily: 'Poppins-Bold',
+    fontSize: 16,
+    fontWeight: '900',
+    lineHeight: 20,
+    marginRight: 6,
+  },
+  cardNombre: {
+    color: '#910E16',
+    fontFamily: 'Poppins-Bold',
+    fontSize: 16,
+    lineHeight: 20,
+    maxWidth: '50%',
+  },
+  cardSeparadorTexto: {
+    color: '#D1D5DB',
+    fontFamily: 'Poppins-Regular',
+    fontSize: 16,
+    marginHorizontal: 6,
+  },
+  cardEstado: {
+    fontFamily: 'Poppins-Regular',
+    fontSize: 16,
+    fontWeight: '400',
+    lineHeight: 20,
+    marginRight: 5,
+  },
+
+  // Body
+  cardBody: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  cardFoto: {
+    width: '48%',
+    aspectRatio: 1,
+    flexShrink: 0,
+    borderRadius: 12,
+    backgroundColor: '#E5E7EB',
+  },
+  cardDatos: {
+    flex: 1,
+    justifyContent: 'flex-start',
+    paddingTop: 4,
+  },
+  datoBloque: {
+    marginBottom: 4,
+  },
+  datoLabel: {
+    color: '#9CA3AF',
+    fontFamily: 'Poppins-Regular',
+    fontSize: 11,
+    letterSpacing: 0.5,
+  },
+  datoValor: {
+    color: '#000000',
+    fontFamily: 'Poppins-SemiBold',
+    fontSize: 16,
+    fontWeight: '500',
+    lineHeight: 20,
+    marginTop: 1,
+  },
+  separador: {
+    width: 168,
+    height: 0.5,
+    backgroundColor: '#DADADA',
+    marginVertical: 4,
+  },
+
+  // Footer
+  progresoContainer: {
+    width: '100%',
+  },
+  progresoBarra: {
+    height: 6,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 9999,
+    overflow: 'hidden',
+  },
+  progresoRelleno: {
+    height: '100%',
+    borderRadius: 9999,
+  },
+  progresoTexto: {
+    color: '#000000',
+    fontFamily: 'Poppins-Regular',
+    fontSize: 13,
+    marginTop: 2,
+    marginLeft: 2
+  },
+
+  // Buscador
+  searchWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 25,
     paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginBottom: 16,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
-  menuIcon: {
-    marginRight: 12,
-  },
-  menuText: {
+  searchInput: {
+    flex: 1,
     fontSize: 15,
-    color: '#333333',
+    color: '#111827',
+    fontFamily: 'Poppins-Regular',
+    paddingVertical: 2,
   },
-  separator: {
-    height: 1,
-    backgroundColor: '#E0E0E0',
+  searchIconBtn: {
+    padding: 4,
+  },
+  arrowBtn: {
+    padding: 4,
   },
 });

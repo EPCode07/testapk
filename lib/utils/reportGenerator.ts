@@ -1,8 +1,8 @@
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import * as FileSystem from 'expo-file-system/legacy';
-import * as Sharing from 'expo-sharing';
 import * as ImageManipulator from 'expo-image-manipulator';
-import { getUsuario } from '../../lib/user/userStorage';
+import * as Sharing from 'expo-sharing';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { getUsuario } from '../user/userStorage';
 
 
 interface ReportItem {
