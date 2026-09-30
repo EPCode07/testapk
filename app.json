@@ -1,0 +1,108 @@
+{
+  "expo": {
+    "name": "Yhoma Reportes",
+    "slug": "yhoma-reportes",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "yhomareportes",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "pe.yhoma.reportes",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "POST_NOTIFICATIONS",
+        "RECEIVE_BOOT_COMPLETED",
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Permite a $(PRODUCT_NAME) acceder al micrófono para el dictado por voz.",
+          "speechRecognitionPermission": "Permite a $(PRODUCT_NAME) usar el reconocimiento de voz para transcribir tus búsquedas."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "backgroundColor": "#000000"
+          }
+        }
+      ],
+      "expo-font",
+      "expo-image",
+      "expo-status-bar",
+      "expo-web-browser",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Permitir a $(PRODUCT_NAME) acceder a tu cámara"
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Permitir a $(PRODUCT_NAME) acceder a tus fotos.",
+          "savePhotosPermission": "Permitir a $(PRODUCT_NAME) guardar fotos.",
+          "isAccessMediaLocationEnabled": true,
+          "granularPermissions": [
+            "photo"
+          ]
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#ffffff"
+        }
+      ],
+      "expo-task-manager",
+      "expo-sharing",
+      "expo-secure-store",
+      "expo-background-task",
+      "@maplibre/maplibre-react-native",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Permite a $(PRODUCT_NAME) acceder a tu ubicación para mostrarte en el mapa y detectar proyectos cercanos."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "675f1024-48be-4327-8cb7-1afe6f0b50b3"
+      }
+    }
+  }
+}
