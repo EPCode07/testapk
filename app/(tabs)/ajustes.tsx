@@ -373,7 +373,7 @@ export default function AjustesScreen() {
                             </View>
                             <View style={styles.itemTextContainer}>
                                 <Text style={styles.itemLabel}>SEGURIDAD</Text>
-                                <Text style={styles.itemValue}>Biometría, Contraseña</Text>
+                                <Text style={styles.itemValue}>Correo Electrónico, Biometría</Text>
                             </View>
                             <Ionicons name="chevron-forward" size={20} color="#666" />
                         </TouchableOpacity>

@@ -138,7 +138,7 @@ export default function ProyectoDetalleScreen() {
             <View style={{ backgroundColor: '#ECEDEF', flex: 1 }}>
                 <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-                <AppHeader variant="back" title="Actividades" />
+                <AppHeader variant="back" title="Estaciones" />
 
                 <ScrollView
                     contentContainerStyle={styles.scrollContent}

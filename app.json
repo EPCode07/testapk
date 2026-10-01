@@ -3,6 +3,7 @@
     "name": "Yhoma Reportes",
     "slug": "yhoma-reportes",
     "version": "1.0.0",
+    "assetBundlePatterns": ["**/*"],
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "yhomareportes",
@@ -70,9 +71,7 @@
           "photosPermission": "Permitir a $(PRODUCT_NAME) acceder a tus fotos.",
           "savePhotosPermission": "Permitir a $(PRODUCT_NAME) guardar fotos.",
           "isAccessMediaLocationEnabled": true,
-          "granularPermissions": [
-            "photo"
-          ]
+          "granularPermissions": ["photo"]
         }
       ],
       [
@@ -92,7 +91,8 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Permite a $(PRODUCT_NAME) acceder a tu ubicación para mostrarte en el mapa y detectar proyectos cercanos."
         }
-      ]
+      ],
+      "react-native-quick-crypto"
     ],
     "experiments": {
       "typedRoutes": true,

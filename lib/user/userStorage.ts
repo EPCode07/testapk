@@ -7,6 +7,9 @@ import * as SecureStore from 'expo-secure-store';
 const USUARIO_KEY = 'app_usuario_actual';
 const TOKEN_KEY = 'auth_token';
 const AUTH_USER_KEY = 'auth_user';
+const CRED_KEY = 'auth_cred';
+const LAST_ONLINE_KEY = 'last_online';
+
 // ============================================
 // Nombre del usuario (compatibilidad con TabScreen)
 // ============================================
@@ -51,6 +54,42 @@ export async function getAuthUser(): Promise<any | null> {
 
 export async function clearAuthUser(): Promise<void> {
     await AsyncStorage.removeItem(AUTH_USER_KEY);
+}
+
+// ============================================
+// Credenciales offline (SecureStore)
+// ============================================
+export interface StoredCred {
+    email: string;
+    salt: string;
+    hash: string;
+    v?: number;
+    iter?: number;
+}
+
+export async function setStoredCred(cred: StoredCred): Promise<void> {
+    await SecureStore.setItemAsync(CRED_KEY, JSON.stringify(cred));
+}
+
+export async function getStoredCred(): Promise<StoredCred | null> {
+    const raw = await SecureStore.getItemAsync(CRED_KEY);
+    return raw ? (JSON.parse(raw) as StoredCred) : null;
+}
+
+export async function clearStoredCred(): Promise<void> {
+    await SecureStore.deleteItemAsync(CRED_KEY);
+}
+
+// ============================================
+// Última conexión online (para expiración offline)
+// ============================================
+export async function setLastOnlineNow(): Promise<void> {
+    await AsyncStorage.setItem(LAST_ONLINE_KEY, String(Date.now()));
+}
+
+export async function getLastOnline(): Promise<number | null> {
+    const raw = await AsyncStorage.getItem(LAST_ONLINE_KEY);
+    return raw ? Number(raw) : null;
 }
 
 // ============================================

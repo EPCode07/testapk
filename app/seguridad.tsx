@@ -115,10 +115,10 @@ export default function SeguridadScreen() {
                     <View style={styles.card}>
                         <View style={styles.itemRow}>
                             <View style={styles.itemIconContainer}>
-                                <Ionicons name="lock-closed-outline" size={20} color="#333" />
+                                <Ionicons name="mail-outline" size={20} color="#333" />
                             </View>
                             <View style={styles.itemTextContainer}>
-                                <Text style={styles.itemLabel}>RECORDAR USUARIO</Text>
+                                <Text style={styles.itemLabel}>RECORDAR CORREO ELECTRÓNICO</Text>
                                 <Text style={styles.itemDescription}>
                                     Guarda tu correo para no escribirlo cada vez
                                 </Text>

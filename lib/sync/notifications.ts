@@ -36,12 +36,11 @@ export async function requestNotificationPermissions(): Promise<boolean> {
 export async function notifySyncStarted(count: number) {
   return await Notifications.scheduleNotificationAsync({
     content: {
-      title: '📤 Sincronizando fotos',
-      body: `Subiendo ${count} foto(s) ...`,
+      title: 'Sincronizando fotos',
+      body: `Subiendo ${count} foto(s)`,
       data: { type: 'sync_started' },
-      priority: Notifications.AndroidNotificationPriority.MAX,
     },
-    trigger: null,
+    trigger: { channelId: 'sync' },
   });
 }
 
@@ -50,13 +49,12 @@ export async function notifySyncFinished(uploaded: number, failed: number) {
 
   return await Notifications.scheduleNotificationAsync({
     content: {
-      title: isPartial ? '⚠️ Sincronización con errores' : '✅ Sincronización exitosa',
+      title: isPartial ? 'Sincronización con errores' : 'Sincronización exitosa',
       body: isPartial
         ? `${uploaded} subida(s), ${failed} fallida(s). Reintentando luego.`
         : `Se subieron ${uploaded} foto(s) a la nube correctamente.`,
       data: { type: 'sync_finished', uploaded, failed },
-      priority: Notifications.AndroidNotificationPriority.MAX,
     },
-    trigger: null,
+    trigger: { channelId: 'sync' },
   });
 }

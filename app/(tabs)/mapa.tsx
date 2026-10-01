@@ -381,7 +381,7 @@ export default function MapaScreen() {
                                     {
                                         translateY: infoAnim.interpolate({
                                             inputRange: [0, 1],
-                                            outputRange: [12, 0],
+                                            outputRange: [10, 0],
                                         }),
                                     },
                                 ],
@@ -763,7 +763,7 @@ const styles = StyleSheet.create({
     // Info ubicación (tarjeta profesional)
     infoUbicacion: {
         position: 'absolute',
-        top: 200,
+        top: 370,
         left: 16,
         right: 16,
         backgroundColor: 'rgba(255,255,255,0.98)',

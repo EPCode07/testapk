@@ -58,15 +58,6 @@ export async function exportarActividadAlServidor(
             type: 'image/jpeg',
         } as any);
     });
-
-    // 🔍 Debug de URIs (quítalo cuando funcione)
-    console.log('🔍 URIs a enviar:', actividad.fotos.map(f => ({
-        uri: f.uriLocal,
-        typeof: typeof f.uriLocal,
-        isString: typeof f.uriLocal === 'string',
-        length: f.uriLocal?.length,
-    })));
-
     try {
         const url = `${API_BASE}/api/actividades/exportar`;
 
@@ -103,22 +94,21 @@ export async function exportarActividadAlServidor(
         if (!json.success) {
             return {
                 success: false,
-                message: json.message ?? 'Error desconocido',
+                message: 'Error desconocido',
             };
         }
 
         return {
-            message: json.message ?? 'Actividad exportada correctamente',
+            message: 'Actividad exportada correctamente',
             success: true,
             actividad: json.actividad,
             registros: json.registros,
             total_fotos: json.total_fotos,
         };
     } catch (err: any) {
-        console.error('❌ Error al exportar:', err);
         return {
             success: false,
-            message: err?.message ?? 'Error de conexión',
+            message: 'Error de conexión',
         };
     }
 }

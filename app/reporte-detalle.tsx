@@ -166,10 +166,10 @@ export default function ReporteDetalleScreen() {
     const estadoKey = normalizarEstado(reporte.estado);
     const config = COLORES_ESTADO[estadoKey] ?? COLORES_ESTADO.abierto;
     const esObservado = estadoKey === 'rechazado';
-    const puedeResumenIA =
-        estadoKey === 'abierto' ||
-        estadoKey === 'revisado' ||
+    const puedeDescargar =
         estadoKey === 'aprobado';
+    // estadoKey === 'abierto' ||
+    // estadoKey === 'revisado' ||
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
@@ -310,26 +310,26 @@ export default function ReporteDetalleScreen() {
                             )}
                         </TouchableOpacity>
                     )}
-
-                    <TouchableOpacity
-                        style={[styles.actionBtn, styles.actionBtnPrimary]}
-                        onPress={handleDescargarPdf}
-                        disabled={descargando}
-                        activeOpacity={0.85}
-                    >
-                        {descargando ? (
-                            <ActivityIndicator size="small" color="#FFFFFF" />
-                        ) : (
-                            <>
-                                <Ionicons name="download-outline" size={20} color="#FFFFFF" />
-                                <Text style={styles.actionBtnPrimaryText}>
-                                    Descargar y compartir PDF
-                                </Text>
-                            </>
-                        )}
-                    </TouchableOpacity>
-
-                    {puedeResumenIA && (
+                    {puedeDescargar && (
+                        <TouchableOpacity
+                            style={[styles.actionBtn, styles.actionBtnPrimary]}
+                            onPress={handleDescargarPdf}
+                            disabled={descargando}
+                            activeOpacity={0.85}
+                        >
+                            {descargando ? (
+                                <ActivityIndicator size="small" color="#FFFFFF" />
+                            ) : (
+                                <>
+                                    <Ionicons name="download-outline" size={20} color="#FFFFFF" />
+                                    <Text style={styles.actionBtnPrimaryText}>
+                                        Descargar y compartir PDF
+                                    </Text>
+                                </>
+                            )}
+                        </TouchableOpacity>
+                    )}
+                    {/* {puedeDescargar && (
                         <TouchableOpacity
                             style={[styles.actionBtn, styles.actionBtnWarning]}
                             onPress={handleResumenIA}
@@ -340,7 +340,7 @@ export default function ReporteDetalleScreen() {
                                 {reporte.resumen_ejecutivo ? 'Editar resumen con IA' : 'Generar resumen con IA'}
                             </Text>
                         </TouchableOpacity>
-                    )}
+                    )} */}
                 </ScrollView>
             </View>
         </SafeAreaView>

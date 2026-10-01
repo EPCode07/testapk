@@ -1,15 +1,19 @@
-import React from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSync } from '../lib/sync/SyncContext';
 
 export default function SyncStatusBanner() {
   const { isSyncing, isOnline, pendingCount } = useSync();
+  const insets = useSafeAreaInsets();
 
   const showOfflineBanner = !isOnline && pendingCount > 0;
   if (!isSyncing && !showOfflineBanner) return null;
 
   return (
-    <View style={styles.container} pointerEvents="none">
+    <View
+      style={[styles.container, { paddingTop: insets.top + 8 }]}
+      pointerEvents="none"
+    >
       {isSyncing ? (
         <>
           <ActivityIndicator size="small" color="#fff" />
@@ -32,7 +36,7 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 999,
     backgroundColor: '#8B1E22',
-    paddingVertical: 8,
+    paddingBottom: 8,
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',

@@ -2,14 +2,17 @@ import NetInfo from '@react-native-community/netinfo';
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { actividadStorage } from '../actividades/actividadStorage';
 import { exportarActividadAlServidor } from '../actividades/exportarActividad';
+import { exportarUnaVez } from '../actividades/exportarSeguro';
 import { exportacionesStorage } from '../exportaciones/exportacionesStorage';
 import { ExportacionItem } from '../exportaciones/types';
+import { authService } from '../user/authService';
 import { getUsuario } from '../user/userStorage';
 import { notifySyncFinished, notifySyncStarted, requestNotificationPermissions } from './notifications';
 import { enqueuePhoto, getPendingItems, getQueue, removeItem, updateItem } from './storageQueue';
 import { syncPreferences } from './syncPreferences';
 import { PhotoContext, SyncItem } from './types';
 import { uploadItem } from './uploadService';
+
 
 interface SyncContextValue {
   queue: SyncItem[];
@@ -60,6 +63,17 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     setExportacionesQueue(q);
   }, []);
 
+  const activeSyncsRef = useRef(0);
+
+  const beginSync = useCallback(() => {
+    activeSyncsRef.current += 1;
+    setIsSyncing(true);
+  }, []);
+
+  const endSync = useCallback(() => {
+    activeSyncsRef.current = Math.max(0, activeSyncsRef.current - 1);
+    if (activeSyncsRef.current === 0) setIsSyncing(false);
+  }, []);
   // ============ UTILIDADES DE RED ============
 
   const canSyncWithNetwork = useCallback(async (state: {
@@ -80,46 +94,51 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const syncNow = useCallback(
     async (force: boolean = false) => {
       if (syncingRef.current) return;
+      syncingRef.current = true; // candado síncrono, antes de cualquier await
+      let started = false;
 
-      const net = await NetInfo.fetch();
-      if (!force) {
-        const can = await canSyncWithNetwork(net);
-        if (!can) return;
-      }
+      try {
 
-      const pending = await getPendingItems();
-      if (pending.length === 0) return;
+        const net = await NetInfo.fetch();
 
-      syncingRef.current = true;
-      setIsSyncing(true);
-      await notifySyncStarted(pending.length);
+        if (!(await authService.hasRealSession())) return;
+        if (!force && !(await canSyncWithNetwork(net))) return;
 
-      let uploaded = 0;
-      let failed = 0;
+        const pending = await getPendingItems();
+        if (pending.length === 0) return;
 
-      for (const item of pending) {
-        try {
-          await updateItem(item.id, { status: 'uploading' });
+        beginSync();
+        started = true;
+        await notifySyncStarted(pending.length);
+
+        let uploaded = 0;
+        let failed = 0;
+
+        for (const item of pending) {
+          try {
+            await updateItem(item.id, { status: 'uploading' });
+            await refreshQueue();
+            await uploadItem(item);
+            await removeItem(item.id);
+            uploaded += 1;
+          } catch (err: any) {
+            failed += 1;
+            await updateItem(item.id, {
+              status: 'error',
+              attempts: (item.attempts ?? 0) + 1,
+              error: err?.message ?? 'Error desconocido',
+            });
+          }
           await refreshQueue();
-          await uploadItem(item);
-          await removeItem(item.id);
-          uploaded += 1;
-        } catch (err: any) {
-          failed += 1;
-          await updateItem(item.id, {
-            status: 'error',
-            attempts: (item.attempts ?? 0) + 1,
-            error: err?.message ?? 'Error desconocido',
-          });
         }
-        await refreshQueue();
-      }
 
-      await notifySyncFinished(uploaded, failed);
-      syncingRef.current = false;
-      setIsSyncing(false);
+        await notifySyncFinished(uploaded, failed);
+      } finally {
+        if (started) endSync();
+        syncingRef.current = false;
+      }
     },
-    [refreshQueue, canSyncWithNetwork]
+    [refreshQueue, canSyncWithNetwork, beginSync, endSync]
   );
 
   // ============ SYNC DE EXPORTACIONES (cola nueva) ============
@@ -127,66 +146,68 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const syncExportacionesNow = useCallback(
     async (force: boolean = false) => {
       if (syncingExpRef.current) return;
+      syncingExpRef.current = true; // candado síncrono
+      let started = false;
 
-      const net = await NetInfo.fetch();
-      if (!force) {
-        const can = await canSyncWithNetwork(net);
-        if (!can) return;
-      }
+      try {
+        const net = await NetInfo.fetch();
+        if (!(await authService.hasRealSession())) return;
+        if (!force && !(await canSyncWithNetwork(net))) return;
 
-      const pendientes = await exportacionesStorage.listarPendientes();
-      if (pendientes.length === 0) return;
+        const pendientes = await exportacionesStorage.listarPendientes();
+        if (pendientes.length === 0) return;
 
-      syncingExpRef.current = true;
-      setIsSyncing(true);
-      await notifySyncStarted(pendientes.length);
+        beginSync();
+        started = true;
+        await notifySyncStarted(pendientes.length);
 
-      let ok = 0;
-      let failed = 0;
+        let ok = 0;
+        let failed = 0;
 
-      for (const item of pendientes) {
-        try {
-          // 1. Leer la actividad desde AsyncStorage
-          const actividad = await actividadStorage.obtener(item.actividadLocalId);
-          if (!actividad) {
-            // No existe la actividad, sacar de la cola
-            await exportacionesStorage.eliminar(item.id);
-            continue;
-          }
+        for (const item of pendientes) {
+          try {
+            const actividad = await actividadStorage.obtener(item.actividadLocalId);
+            if (!actividad) {
+              await exportacionesStorage.eliminar(item.id);
+              await refreshExportaciones();
+              continue;
+            }
 
-          // 2. Subir al servidor
-          const resultado = await exportarActividadAlServidor(actividad);
+            // Dedupe por id + reintento ante deadlock (el helper que te pasé antes)
+            const resultado = await exportarUnaVez(
+              item.estacionServicioActividadId,
+              () => exportarActividadAlServidor(actividad)
+            );
 
-          if (!resultado.success) {
+            if (!resultado.success) {
+              await exportacionesStorage.marcarError(
+                item.id,
+                resultado.message ?? 'Error desconocido'
+              );
+              failed += 1;
+            } else {
+              await actividadStorage.marcarExportada(item.actividadLocalId);
+              await exportacionesStorage.eliminar(item.id);
+              ok += 1;
+            }
+          } catch (err: any) {
+            failed += 1;
             await exportacionesStorage.marcarError(
               item.id,
-              resultado.message ?? 'Error desconocido'
+              err?.message ?? 'Error inesperado'
             );
-            failed += 1;
-            continue;
           }
-
-          // 3. Éxito: marcar la actividad como exportada y sacarla de la cola
-          await actividadStorage.marcarExportada(item.actividadLocalId);
-          await exportacionesStorage.eliminar(item.id);
-          ok += 1;
-        } catch (err: any) {
-          failed += 1;
-          await exportacionesStorage.marcarError(
-            item.id,
-            err?.message ?? 'Error inesperado'
-          );
+          await refreshExportaciones();
         }
-        await refreshExportaciones();
+
+        if (ok + failed > 0) await notifySyncFinished(ok, failed);
+      } finally {
+        if (started) endSync();
+        syncingExpRef.current = false;
       }
-
-      await notifySyncFinished(ok, failed);
-      syncingExpRef.current = false;
-      setIsSyncing(false);
     },
-    [refreshExportaciones, canSyncWithNetwork]
+    [refreshExportaciones, canSyncWithNetwork, beginSync, endSync]
   );
-
   // ============ ADD TO QUEUES ============
 
   const addPhotoToQueue = useCallback(

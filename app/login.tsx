@@ -19,6 +19,8 @@ import {
 } from 'react-native';
 import { showMessage } from 'react-native-flash-message';
 
+import { useAuth } from '@/hooks/useAuth';
+import { useOnline } from '@/hooks/useOnline';
 import CustomAlert from '../components/CustomAlert';
 import { authService, AuthUser } from '../lib/user/authService';
 import { biometricService } from '../lib/user/biometricService';
@@ -39,6 +41,9 @@ export default function LoginScreen() {
     const [biometricType, setBiometricType] = useState('Biometría');
 
     const [alert, setAlert] = useState({ visible: false, title: '', message: '' });
+    const { login } = useAuth();
+    const online = useOnline();
+
     useEffect(() => {
         (async () => {
             const available = await biometricService.isAvailable();
@@ -76,7 +81,7 @@ export default function LoginScreen() {
 
         try {
             setLoading(true);
-            const user = await authService.login(email, password);
+            const user = await login(email, password);   // 👈 usa AuthContext
             await setUsuario(user.name);
             if (biometricAvailable && !biometricEnabled) {
                 setTimeout(() => askEnableBiometric(user), 400);
@@ -89,7 +94,6 @@ export default function LoginScreen() {
             });
 
             router.replace('/(tabs)' as any);
-
         } catch (err: any) {
             setAlert({
                 visible: true,
@@ -113,8 +117,9 @@ export default function LoginScreen() {
 
         try {
             setLoading(true);
-            const user = await authService.login(email, password);
-            await setUsuario(user.name); showMessage({
+            const user = await login(email, password);   // 👈 usa AuthContext
+            await setUsuario(user.name);
+            showMessage({
                 message: `Bienvenido, ${user.name}`,
                 type: 'success',
                 icon: 'success',
@@ -210,7 +215,7 @@ export default function LoginScreen() {
 
     const handleRecover = () => {
         showMessage({
-            message: 'Te enviamos instrucciones para recuperar tu contraseña',
+            message: 'Opción habilitada para futuras versiones',
             type: 'info',
             icon: 'info',
         });
@@ -226,6 +231,20 @@ export default function LoginScreen() {
                 resizeMode="cover"
             >
                 <View style={styles.overlay} />
+                {!online && (
+                    <View style={{
+                        backgroundColor: '#FEF3C7',
+                        paddingVertical: 6,
+                        paddingHorizontal: 12,
+                        position: 'absolute',
+                        top: 0, left: 0, right: 0,
+                        zIndex: 10,
+                    }}>
+                        <Text style={{ color: '#92400E', textAlign: 'center', fontSize: 13, fontWeight: '600' }}>
+                            Sin conexión — modo offline
+                        </Text>
+                    </View>
+                )}
 
                 <KeyboardAvoidingView
                     style={{ flex: 1 }}
@@ -296,7 +315,7 @@ export default function LoginScreen() {
                                             style={styles.forgotWrapper}
                                         >
                                             <Text style={styles.forgot}>
-                                                ¿No es tu usuario? Cambiar de usuario
+                                                Cambiar de correo electrónico
                                             </Text>
                                         </TouchableOpacity>
 
@@ -346,10 +365,10 @@ export default function LoginScreen() {
                                             Ingresa tus credenciales
                                         </Text>
 
-                                        <Text style={styles.label}>Usuario</Text>
+                                        <Text style={styles.label}>Correo electrónico</Text>
                                         <TextInput
                                             style={styles.input}
-                                            placeholder="Ingresar Usuario"
+                                            placeholder="Ingresar correo electrónico"
                                             placeholderTextColor="#999"
                                             autoCapitalize="none"
                                             autoCorrect={false}

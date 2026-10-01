@@ -28,7 +28,7 @@ import { proyectoCache } from '../../lib/proyectos/proyectoCache';
 import { useSync } from '../../lib/sync/SyncContext';
 
 
-const FOTO_DEFAULT = 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800';
+const FOTO_DEFAULT = 'https://yhoma.pe/wp-content/uploads/2026/09/servicio-1.png';
 
 const ESTADOS_CONFIG: Record<EstadoProyecto, { label: string }> = {
   iniciar: { label: 'Pendiente' },
