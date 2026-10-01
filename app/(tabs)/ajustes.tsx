@@ -630,7 +630,7 @@ export default function AjustesScreen() {
                         onPress={() => setMenuVisible(false)}
                     >
                         <View style={styles.menuContainer}>
-                            <TouchableOpacity
+                            {/* <TouchableOpacity
                                 style={styles.menuItem}
                                 onPress={() => handleOptionSelect('asset')}
                             >
@@ -658,7 +658,7 @@ export default function AjustesScreen() {
                                 <Text style={styles.menuText}>Descargar Word</Text>
                             </TouchableOpacity>
 
-                            <View style={styles.separator} />
+                            <View style={styles.separator} /> */}
 
                             <TouchableOpacity
                                 style={styles.menuItem}

@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 type Props = {
     onBack: () => void;
     savedCount: number;
@@ -46,7 +46,7 @@ export default function CameraTopBar({
             </TouchableOpacity>
 
             <View style={styles.topRightIcons}>
-                {savedCount > 0 && (
+                {/* {savedCount > 0 && (
                     <TouchableOpacity
                         style={styles.iconButton}
                         onPress={onSave}
@@ -64,7 +64,7 @@ export default function CameraTopBar({
                             </>
                         )}
                     </TouchableOpacity>
-                )}
+                )} */}
 
                 <TouchableOpacity style={styles.iconButton} onPress={onToggleTimer}>
                     <Ionicons

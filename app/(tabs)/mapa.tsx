@@ -592,7 +592,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
-        marginBottom: 8,
+        marginBottom: 4,
     },
     filtroEspecial: {
         flexDirection: 'row',
@@ -712,7 +712,7 @@ const styles = StyleSheet.create({
         right: 16,
         backgroundColor: '#FFFFFF',
         borderRadius: 14,
-        padding: 14,
+        padding: 24,
         shadowColor: '#000',
         shadowOpacity: 0.15,
         shadowRadius: 10,

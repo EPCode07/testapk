@@ -578,7 +578,6 @@ export default function PhotoAlbumScreen() {
                 </View>
             </ScrollView>
 
-            {/* Botón exportar */}
             <View style={styles.footer}>
                 <TouchableOpacity
                     style={[styles.exportBtn, exportando && styles.exportBtnDisabled]}
