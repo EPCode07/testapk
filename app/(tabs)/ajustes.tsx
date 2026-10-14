@@ -1,7 +1,5 @@
-// app/(tabs)/ajustes.tsx
 import { Ionicons } from '@expo/vector-icons';
 import { useNetInfo } from '@react-native-community/netinfo';
-import { Asset } from 'expo-asset';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
@@ -16,21 +14,21 @@ import {
     View,
 } from 'react-native';
 import { showMessage } from 'react-native-flash-message';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import AppHeader from '../../components/AppHeader';
 import CustomAlert from '../../components/CustomAlert';
 import DescargarDataModal from '../../components/DescargarDataModal';
 
+import { useAhora } from '../../hooks/use-ahora';
 import { CacheMetadata, proyectoCache } from '../../lib/proyectos/proyectoCache';
 import { useSync } from '../../lib/sync/SyncContext';
 import { SyncNetwork, syncPreferences } from '../../lib/sync/syncPreferences';
 import { authService, AuthUser } from '../../lib/user/authService';
 import { clearAuthUser, getUsuario } from '../../lib/user/userStorage';
-import { downloadWordReport, generatePhotoReportPDF } from '../../lib/utils/reportGenerator';
 
 export default function AjustesScreen() {
-    const insets = useSafeAreaInsets();
+    const ahora = useAhora();
     const netInfo = useNetInfo();
 
     // ------- Estado PRIMER ARCHIVO -------
@@ -116,16 +114,6 @@ export default function AjustesScreen() {
         await clearAuthUser();
         router.replace('/login' as any);
     };
-
-    const handleOptionSelect = (action: string) => {
-        setMenuVisible(false);
-        if (action === 'asset') {
-            handleGenerateWithAsset();
-        } else if (action === 'download') {
-            handleDownloadWord();
-        }
-    };
-
     const handleRefreshProfile = async () => {
         setMenuVisible(false);
         const fresh = await authService.me();
@@ -145,53 +133,6 @@ export default function AjustesScreen() {
         }
     };
 
-    async function handleGenerateWithAsset() {
-        try {
-            const asset = Asset.fromModule(
-                require('../assets/documentos/pdf/Formato_IT_RD_V2_02.07.26.pdf')
-            );
-            await asset.downloadAsync();
-
-            let baseUri = asset.localUri;
-            if (!baseUri) {
-                throw new Error('No se pudo cargar la plantilla PDF local.');
-            }
-
-            const response = await fetch(
-                `${process.env.EXPO_PUBLIC_BACKEND_URL}/listall?usuario=${user}`,
-                {
-                    headers: {
-                        'x-api-secret': process.env.EXPO_PUBLIC_API_SECRET ?? '',
-                    },
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error(`Error del servidor: ${response.status}`);
-            }
-
-            const json = await response.json();
-            if (!json.success) {
-                throw new Error(json.error || 'Error consultando fotos');
-            }
-
-            const items = json.data;
-            await generatePhotoReportPDF(items, baseUri);
-        } catch (error) {
-            console.error('Error al generar el PDF con datos de Supabase:', error);
-        }
-    }
-
-    async function handleDownloadWord() {
-        setGenerando(true);
-        try {
-            await downloadWordReport();
-        } catch (error: any) {
-            setIsAlertVisible(true);
-        } finally {
-            setGenerando(false);
-        }
-    }
 
     // ------- Handlers SEGUNDO ARCHIVO -------
     const handleDescargarData = () => {
@@ -259,9 +200,8 @@ export default function AjustesScreen() {
         );
     };
 
-    const formatearFecha = (ts: number | null | undefined) => {
+    const formatearFecha = (ts: number | null | undefined, ahora: number) => {
         if (!ts) return 'Nunca';
-        const ahora = Date.now();
         const diff = ahora - ts;
         const minutos = Math.floor(diff / 60000);
         const horas = Math.floor(diff / 3600000);
@@ -273,7 +213,6 @@ export default function AjustesScreen() {
         return `hace ${dias} día${dias > 1 ? 's' : ''}`;
     };
 
-
     const hayCache = meta !== null;
     const isConnected = netInfo.isConnected;
     const statusColor = isConnected ? '#333' : '#C62828';
@@ -283,9 +222,7 @@ export default function AjustesScreen() {
     // ----------------------------------------------------------------
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
-
             <View style={{ backgroundColor: '#ECEDEF', flex: 1 }}>
-
                 <StatusBar barStyle="dark-content" backgroundColor="#ECEDEF" />
 
                 <AppHeader
@@ -417,7 +354,7 @@ export default function AjustesScreen() {
                             <View style={styles.itemTextContainer}>
                                 <Text style={styles.itemLabel}>ÚLTIMA DESCARGA</Text>
                                 <Text style={styles.itemValue}>
-                                    {formatearFecha(meta?.ultimaActualizacion)}
+                                    {formatearFecha(meta?.ultimaActualizacion, ahora)}
                                 </Text>
                             </View>
                         </View>
@@ -591,10 +528,7 @@ export default function AjustesScreen() {
                     <View style={styles.card}>
                         <Text style={styles.cardSectionTitle}>Acciones</Text>
 
-                        <TouchableOpacity
-                            style={styles.itemRow}
-                            onPress={handleLimpiarCache}
-                        >
+                        <TouchableOpacity style={styles.itemRow} onPress={handleLimpiarCache}>
                             <View style={styles.itemIconContainer}>
                                 <Ionicons name="trash-outline" size={20} color="#7A1C1C" />
                             </View>
@@ -610,14 +544,13 @@ export default function AjustesScreen() {
 
                     <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
                         <Ionicons name="log-out-outline" size={20} color="#7A1C1C" />
-                        <Text style={styles.logoutText}>Cerrar Sesión</Text>
+                        <Text style={styles.logoutText}>CERRAR SESIÓN</Text>
                     </TouchableOpacity>
 
                     <Text style={styles.footerVersion}>Yhoma Reportes V1.0</Text>
                 </ScrollView>
 
-
-                {/* ================= MODAL MENÚ (PRIMER ARCHIVO) ================= */}
+                {/* ================= MODAL MENÚ ================= */}
                 <Modal
                     visible={menuVisible}
                     transparent={true}
@@ -630,36 +563,6 @@ export default function AjustesScreen() {
                         onPress={() => setMenuVisible(false)}
                     >
                         <View style={styles.menuContainer}>
-                            {/* <TouchableOpacity
-                                style={styles.menuItem}
-                                onPress={() => handleOptionSelect('asset')}
-                            >
-                                <Ionicons
-                                    name="document-text-outline"
-                                    size={20}
-                                    color="#8B1E24"
-                                    style={styles.menuIcon}
-                                />
-                                <Text style={styles.menuText}>Descargar PDF</Text>
-                            </TouchableOpacity>
-
-                            <View style={styles.separator} />
-
-                            <TouchableOpacity
-                                style={styles.menuItem}
-                                onPress={() => handleOptionSelect('download')}
-                            >
-                                <Ionicons
-                                    name="document-outline"
-                                    size={20}
-                                    color="#114ccbff"
-                                    style={styles.menuIcon}
-                                />
-                                <Text style={styles.menuText}>Descargar Word</Text>
-                            </TouchableOpacity>
-
-                            <View style={styles.separator} /> */}
-
                             <TouchableOpacity
                                 style={styles.menuItem}
                                 onPress={handleRefreshProfile}
@@ -676,7 +579,7 @@ export default function AjustesScreen() {
                     </TouchableOpacity>
                 </Modal>
 
-                {/* ================= MODAL DESCARGA (SEGUNDO ARCHIVO) ================= */}
+                {/* ================= MODAL DESCARGA ================= */}
                 <DescargarDataModal
                     visible={modalDescargaVisible}
                     onClose={() => setModalDescargaVisible(false)}
@@ -685,7 +588,7 @@ export default function AjustesScreen() {
                     }}
                 />
 
-                {/* ================= CUSTOM ALERT (PRIMER ARCHIVO) ================= */}
+                {/* ================= CUSTOM ALERT ================= */}
                 <CustomAlert
                     visible={alert.visible}
                     appName="Yhoma Reportes"
@@ -710,7 +613,7 @@ export default function AjustesScreen() {
     );
 }
 
-// ---------------- DataRow (del segundo archivo, con estilos del primero) ----------------
+// ---------------- DataRow ----------------
 function DataRow({
     icon,
     label,
@@ -729,9 +632,7 @@ function DataRow({
             </View>
             <View style={styles.itemTextContainer}>
                 <Text style={styles.itemLabel}>{label.toUpperCase()}</Text>
-                <Text
-                    style={[styles.itemValue, highlight && { color: '#7A1C1C' }]}
-                >
+                <Text style={[styles.itemValue, highlight && { color: '#7A1C1C' }]}>
                     {value}
                 </Text>
             </View>
@@ -739,7 +640,7 @@ function DataRow({
     );
 }
 
-// ---------------- ESTILOS (del PRIMER ARCHIVO) ----------------
+// ---------------- ESTILOS ----------------
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -759,7 +660,6 @@ const styles = StyleSheet.create({
     cardSectionTitle: {
         fontSize: 18,
         fontFamily: 'Poppins-Bold',
-        color: '#7A1C1C',
         marginBottom: 12,
     },
     itemRow: {
@@ -859,18 +759,19 @@ const styles = StyleSheet.create({
         opacity: 0.5,
     },
     logoutButton: {
+        backgroundColor: '#7A1C1C',
         borderWidth: 1.5,
         borderColor: '#7A1C1C',
-        borderRadius: 25,
+        borderRadius: 16,
         paddingVertical: 12,
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 8,
-        backgroundColor: 'transparent',
+        marginTop: 10,
+        marginBottom: 10,
     },
     logoutText: {
-        color: '#7A1C1C',
+        color: '#ffffff',
         fontWeight: 'bold',
         fontSize: 15,
         marginLeft: 8,
@@ -912,9 +813,5 @@ const styles = StyleSheet.create({
     menuText: {
         fontSize: 15,
         color: '#333333',
-    },
-    separator: {
-        height: 1,
-        backgroundColor: '#E0E0E0',
     },
 });

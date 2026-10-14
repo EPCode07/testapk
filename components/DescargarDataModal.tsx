@@ -37,8 +37,6 @@ export default function DescargarDataModal({ visible, onClose, onSuccess }: Prop
     const [finalizado, setFinalizado] = useState(false);
     const [meta, setMeta] = useState<CacheMetadata | null>(null);
 
-    // ... resto del componente sin cambios
-
     const iniciarDescarga = async () => {
         setFinalizado(false);
         setMeta(null);
@@ -206,15 +204,30 @@ function PasoRow({ paso }: { paso: PasoDescarga }) {
             </View>
 
             <View style={styles.pasoText}>
-                <Text
-                    style={[
-                        styles.pasoLabel,
-                        paso.estado === 'completado' && styles.pasoLabelCompletado,
-                        paso.estado === 'error' && { color: '#C62828' },
-                    ]}
-                >
-                    {paso.icono} {paso.label}
-                </Text>
+                <View style={styles.pasoLabelRow}>
+                    <Ionicons
+                        name={paso.icono}
+                        size={16}
+                        color={
+                            paso.estado === 'error'
+                                ? '#C62828'
+                                : paso.estado === 'completado'
+                                    ? '#2E7D32'
+                                    : '#7A1C1C'
+                        }
+                        style={styles.pasoLabelIcon}
+                    />
+                    <Text
+                        style={[
+                            styles.pasoLabel,
+                            paso.estado === 'completado' && styles.pasoLabelCompletado,
+                            paso.estado === 'error' && { color: '#C62828' },
+                        ]}
+                    >
+                        {paso.label}
+                    </Text>
+                </View>
+
                 {paso.detalle && (
                     <Text style={styles.pasoDetalle}>
                         {paso.detalle}
@@ -227,7 +240,6 @@ function PasoRow({ paso }: { paso: PasoDescarga }) {
         </View>
     );
 }
-
 const styles = StyleSheet.create({
     backdrop: {
         flex: 1,
@@ -238,7 +250,7 @@ const styles = StyleSheet.create({
     },
     card: {
         backgroundColor: '#ffffffff',
-        borderRadius: 20,
+        borderRadius: 12,
         padding: 18,
         width: '100%',
         maxWidth: 460,
@@ -360,5 +372,12 @@ const styles = StyleSheet.create({
         color: '#7A1C1C',
         fontSize: 15,
         fontFamily: 'Poppins-SemiBold',
+    },
+    pasoLabelRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    pasoLabelIcon: {
+        marginRight: 6,
     },
 });

@@ -1,17 +1,13 @@
-// === Expo ===
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as Location from 'expo-location';
 import * as MediaLibrary from 'expo-media-library/legacy';
 
-// === Expo Router ===
-import { router, Stack, useLocalSearchParams, usePathname } from 'expo-router';
+import { useSafeNavigate } from '@/hooks/useSafeNavigate';
+import { Stack, useFocusEffect, useLocalSearchParams, usePathname } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-// === React ===
-import { useEffect, useRef, useState } from 'react';
-
-// === React Native ===
 import {
     Image,
     ImageBackground,
@@ -19,17 +15,15 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
-    View
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ViewShot from 'react-native-view-shot';
 
-// === Libs / Servicios ===
 import { ActividadResumen, useActividad } from '../lib/actividades/ActividadContext';
 import { DireccionInfo, obtenerDireccion } from '../lib/location/reverseGeocode';
 import { useSync } from '../lib/sync/SyncContext';
 
-// === Componentes ===
 import WatermarkCard from '../components/WatermarkCard';
 import ActividadSelectorModal from '../components/camera/ActividadSelectorModal';
 import BottomControls from '../components/camera/BottomControls';
@@ -40,33 +34,20 @@ import ZoomSelector, { ZoomLevel } from '../components/camera/ZoomSelector';
 
 
 export default function CameraScreen() {
-
     const { estacion_servicio_actividad_id } = useLocalSearchParams<{
         estacion_servicio_actividad_id?: string;
     }>();
 
-    const actividadId = estacion_servicio_actividad_id
-        ? Number(estacion_servicio_actividad_id)
-        : undefined;
-
     const [permission, requestPermission] = useCameraPermissions();
-    const [mediaPermission, requestMediaPermission] =
-        MediaLibrary.usePermissions({
-            writeOnly: true,
-            granularPermissions: ['photo'],
-        });
+    MediaLibrary.usePermissions({
+        writeOnly: true,
+        granularPermissions: ['photo'],
+    });
+
     const [facing, setFacing] = useState<'back' | 'front'>('back');
     const [zoom, setZoom] = useState<ZoomLevel>(1);
     const [flash, setFlash] = useState<'off' | 'on'>('off');
     const [timerSeconds, setTimerSeconds] = useState<0 | 3 | 5 | 10>(0);
-
-    const params = useLocalSearchParams<{
-        estacion_servicio_actividad_id?: string;
-        estacionId?: string;
-        estacionCodigo?: string;
-        actividadNombre?: string;
-        proyectoNombre?: string;
-    }>();
 
     const {
         actividadActualId,
@@ -76,23 +57,19 @@ export default function CameraScreen() {
         setActividadActual,
         cargarActividadEnCurso,
         agregarFotoActividad,
-        descartarActividadEnCurso,
         transferirFotosAActividad,
-
     } = useActividad();
 
     const [selectorVisible, setSelectorVisible] = useState(false);
     const [confirmVisible, setConfirmVisible] = useState(false);
     const [pendingActividad, setPendingActividad] = useState<ActividadResumen | null>(null);
 
-    // Derivados para el BottomControls
     const count = actividadEnCurso?.fotos.length ?? 0;
-    const lastPhotoUri = actividadEnCurso?.fotos[actividadEnCurso.fotos.length - 1]?.uriLocal ?? null;
-
-
+    const lastPhotoUri =
+        actividadEnCurso?.fotos[actividadEnCurso.fotos.length - 1]?.uriLocal ?? null;
 
     const cameraRef = useRef<CameraView>(null);
-    const { addPhotoToQueue } = useSync();
+    useSync();
     const [cameraReady, setCameraReady] = useState(false);
     const [imageToProcessUri, setImageToProcessUri] = useState<string | null>(null);
     const [currentLocation, setCurrentLocation] = useState<any>(null);
@@ -101,39 +78,30 @@ export default function CameraScreen() {
     const captureIdRef = useRef(0);
     const imageLoadedRef = useRef(false);
 
-    const [heading, setHeading] = useState<number | null>(null);
     const [capturedAt, setCapturedAt] = useState<string | null>(null);
 
     const viewShotRef = useRef<any>(null);
-
     const pathname = usePathname();
-
-    const [isImageLoaded, setIsImageLoaded] = useState(false);
 
     const [isCapturing, setIsCapturing] = useState(false);
     const [photoDimensions, setPhotoDimensions] = useState({ width: 1080, height: 1920 });
 
-    const headingRef = useRef<number | null>(null);
-    const headingSubRef = useRef<Location.LocationSubscription | null>(null);
     const lastKnownLocationRef = useRef<any>(null);
     const locationSubRef = useRef<Location.LocationSubscription | null>(null);
 
+    const [altitud, setAltitud] = useState<number | null>(null);
+    const [altitudeAccuracy, setAltitudeAccuracy] = useState<number | null>(null);
+
     const [direccionActual, setDireccionActual] = useState<DireccionInfo | null>(null);
-
     const [countdown, setCountdown] = useState<number | null>(null);
+    const router = useSafeNavigate();
 
-
-
-
-
-    useEffect(() => {
-        if (pathname === '/camera') {
+    useFocusEffect(
+        useCallback(() => {
             setImageToProcessUri(null);
-            setIsImageLoaded(false);
-        }
-    }, [pathname]);
+        }, [])
+    );
 
-    // ✅ REEMPLAZAR con esto
     useEffect(() => {
         const id = estacion_servicio_actividad_id
             ? Number(estacion_servicio_actividad_id)
@@ -141,7 +109,7 @@ export default function CameraScreen() {
         if (id) {
             cargarActividadEnCurso(id);
         }
-    }, []); // ← deps vacías: solo al montar
+    }, []);
 
     useEffect(() => {
         if (pathname !== '/camera') return;
@@ -150,37 +118,31 @@ export default function CameraScreen() {
             const { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') return;
 
-            headingSubRef.current = await Location.watchHeadingAsync((data) => {
-                const h = data.trueHeading >= 0 ? data.trueHeading : data.magHeading;
-                if (h >= 0) headingRef.current = h;
-            });
-
             locationSubRef.current = await Location.watchPositionAsync(
-                { accuracy: Location.Accuracy.Balanced, distanceInterval: 5 },
-                (loc) => { lastKnownLocationRef.current = loc; }
+                { accuracy: Location.Accuracy.High, distanceInterval: 5 },
+                (loc) => {
+                    lastKnownLocationRef.current = loc;
+                }
             );
         };
 
         warmup();
 
         return () => {
-            headingSubRef.current?.remove();
-            headingSubRef.current = null;
             locationSubRef.current?.remove();
             locationSubRef.current = null;
-            headingRef.current = null;
             lastKnownLocationRef.current = null;
         };
     }, [pathname]);
 
-
     useEffect(() => {
-        // Precargar la dirección de la ubicación actual
         const precargar = async () => {
             try {
                 const loc = await Location.getCurrentPositionAsync({
-                    accuracy: Location.Accuracy.Balanced,
+                    accuracy: Location.Accuracy.High,
                 });
+
+                lastKnownLocationRef.current = loc;
 
                 const dir = await obtenerDireccion(
                     loc.coords.latitude,
@@ -189,15 +151,13 @@ export default function CameraScreen() {
 
                 if (dir) {
                     setDireccionActual(dir);
-                    console.log('📍 Dirección precargada:', dir);
                 }
-            } catch (e) {
-                console.warn('⚠️ No se pudo precargar dirección:', e);
-            }
+            } catch (e) { }
         };
 
         precargar();
     }, []);
+
     if (!permission) {
         return (
             <>
@@ -240,30 +200,23 @@ export default function CameraScreen() {
     };
 
     const takePicture = async () => {
-        if (isCapturingRef.current) {
-            return;
-        }
+        if (isCapturingRef.current) return;
         isCapturingRef.current = true;
         setIsCapturing(true);
 
         const myCaptureId = ++captureIdRef.current;
 
         try {
-            if (!cameraRef.current || !cameraReady) {
-                return;
-            }
+            if (!cameraRef.current || !cameraReady) return;
 
             if (timerSeconds > 0) {
                 await runCountdown(timerSeconds);
             }
 
             try {
-
                 const photo = await cameraRef.current.takePictureAsync();
 
-                if (!photo?.uri) {
-                    return;
-                }
+                if (!photo?.uri) return;
 
                 setCapturedAt(new Date().toISOString());
 
@@ -284,16 +237,23 @@ export default function CameraScreen() {
 
                     imageToUse = manipulatedImage.uri;
                     setPhotoDimensions({ width: TARGET_WIDTH, height: TARGET_HEIGHT });
-
-                } catch (manipulationError) {
-                }
+                } catch (manipulationError) { }
 
                 let finalImageUri = imageToUse;
                 try {
-                    const location = lastKnownLocationRef.current;
-                    const headingValue = headingRef.current;
+                    let location = lastKnownLocationRef.current;
 
-                    // 🔑 Obtener dirección real (con caché)
+                    if (!location?.coords || (location.coords.accuracy ?? 999) > 30) {
+                        try {
+                            location = await Location.getCurrentPositionAsync({
+                                accuracy: Location.Accuracy.High,
+                            });
+                            lastKnownLocationRef.current = location;
+                        } catch (e) {
+                            console.warn('⚠️ No se pudo obtener ubicación fresca:', e);
+                        }
+                    }
+
                     if (location?.coords) {
                         try {
                             const dir = await obtenerDireccion(
@@ -301,7 +261,6 @@ export default function CameraScreen() {
                                 location.coords.longitude
                             );
                             setDireccionActual(dir);
-                            // Pequeño delay para que React re-renderice el ViewShot
                             await new Promise((r) => setTimeout(r, 150));
                         } catch (e) {
                             console.warn('⚠️ No se pudo obtener dirección:', e);
@@ -309,11 +268,16 @@ export default function CameraScreen() {
                         }
                     }
 
-                    setIsImageLoaded(false);
                     imageLoadedRef.current = false;
                     setImageToProcessUri(imageToUse);
                     setCurrentLocation(location);
-                    setHeading(headingValue);
+
+                    const altValida =
+                        location?.coords?.altitude != null &&
+                        location.coords.altitude !== 0 &&
+                        (location.coords.altitudeAccuracy ?? 0) > 0;
+                    setAltitud(altValida ? location.coords.altitude : null);
+                    setAltitudeAccuracy(location?.coords?.altitudeAccuracy ?? null);
 
                     await new Promise<void>((resolve) => {
                         let elapsed = 0;
@@ -330,42 +294,32 @@ export default function CameraScreen() {
                         check();
                     });
 
-                    let uriWithWatermark = null;
+                    let uriWithWatermark: string | null = null;
                     if (viewShotRef.current && viewShotRef.current.capture) {
                         try {
                             uriWithWatermark = await viewShotRef.current.capture();
 
                             if (uriWithWatermark) {
-                                try {
-                                    const info = await FileSystem.getInfoAsync(uriWithWatermark as string);
-                                    const sizeKB = ((info as any).size ?? 0) / 1024;
-
-                                    if (sizeKB < 20) {
-                                    }
-                                } catch (e) {
-                                }
+                                await FileSystem.getInfoAsync(uriWithWatermark);
                             }
-                        } catch (err) {
-                        }
+                        } catch (err) { }
                     }
 
                     if (uriWithWatermark) {
-                        finalImageUri = uriWithWatermark as string;
+                        finalImageUri = uriWithWatermark;
                     }
-                } catch (watermarkError) {
-                }
+                } catch (watermarkError) { }
+
                 await agregarFotoActividad({
                     uriLocal: finalImageUri,
                     timestamp: new Date().toISOString(),
-                    heading: headingRef.current,
-                    latitud: lastKnownLocationRef.current?.coords?.latitude,
-                    longitud: lastKnownLocationRef.current?.coords?.longitude,
+                    latitud: lastKnownLocationRef.current?.coords?.latitude ?? null,
+                    longitud: lastKnownLocationRef.current?.coords?.longitude ?? null,
                     altitud: lastKnownLocationRef.current?.coords?.altitude,
                     precision: lastKnownLocationRef.current?.coords?.accuracy,
                 });
                 setImageToProcessUri(null);
-            } catch (error) {
-            }
+            } catch (error) { }
         } catch (error) {
         } finally {
             isCapturingRef.current = false;
@@ -373,24 +327,8 @@ export default function CameraScreen() {
             setCountdown(null);
         }
     };
-    const now = new Date();
-
-    const fecha = capturedAt ? new Date(capturedAt) : new Date();
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    const fechaStr = `${pad(fecha.getDate())}/${pad(fecha.getMonth() + 1)}/${fecha.getFullYear().toString().slice(-2)}`;
-    const hora12 = fecha.getHours() % 12 === 0 ? 12 : fecha.getHours() % 12;
-    const horaStr = `${hora12}:${pad(fecha.getMinutes())} ${fecha.getHours() >= 12 ? 'pm' : 'am'}`;
-
-    const puntosCardinales = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-
-    const gradoACardinal = (deg: number): string =>
-        puntosCardinales[Math.round(deg / 45) % 8];
 
     const zoomScale = zoom === 1 ? 0 : zoom === 2 ? 0.5 : 0;
-    const handlePreviewPhoto = () => {
-        if (!lastPhotoUri) return;
-        router.push('/photo-album' as any);
-    };
 
     const handleOpenAlbum = () => {
         router.push('/photo-album' as any);
@@ -424,13 +362,11 @@ export default function CameraScreen() {
         setConfirmVisible(false);
         setPendingActividad(null);
 
-        // Ir al álbum con el "next" para volver a la nueva actividad
         router.push({
             pathname: '/photo-album' as any,
             params: { nextActividadId: String(nextId) },
         });
     };
-
 
     const handleCancelarCambio = () => {
         setConfirmVisible(false);
@@ -455,9 +391,7 @@ export default function CameraScreen() {
                 onSave={handleOpenAlbum}
                 onLongPressSave={handleOpenAlbum}
                 timer={timerSeconds > 0}
-                onToggleTimer={() =>
-                    setTimerSeconds((prev) => (prev === 0 ? 3 : 0))
-                }
+                onToggleTimer={() => setTimerSeconds((prev) => (prev === 0 ? 3 : 0))}
                 flash={flash}
                 onToggleFlash={toggleFlash}
                 actividadNombre={actividadActual?.nombre ?? 'Sin actividad'}
@@ -472,13 +406,9 @@ export default function CameraScreen() {
                     enableTorch={flash === 'on'}
                     zoom={zoomScale}
                     onCameraReady={() => {
-                        console.log('📷 Cámara lista');
                         setCameraReady(true);
                     }}
                 />
-                <View style={styles.floatingCircleWrapper}>
-                    <TouchableOpacity style={styles.floatingCircle} />
-                </View>
             </View>
 
             <ZoomSelector zoom={zoom} onChange={setZoom} />
@@ -497,7 +427,6 @@ export default function CameraScreen() {
 
             <TimerOverlay countdown={countdown} />
 
-            {/* Watermark oculto para ViewShot */}
             <View style={styles.hiddenWatermarkContainer} pointerEvents="none">
                 <ViewShot
                     key={imageToProcessUri ? imageToProcessUri : 'empty-camera-state'}
@@ -521,7 +450,6 @@ export default function CameraScreen() {
                             resizeMode="cover"
                             onLoad={() => {
                                 imageLoadedRef.current = true;
-                                setIsImageLoaded(true);
                             }}
                         />
                     ) : null}
@@ -544,16 +472,16 @@ export default function CameraScreen() {
                             variant="watermark"
                             direccion={direccionActual}
                             cargandoDireccion={!direccionActual}
-                            latitud={lastKnownLocationRef.current?.coords?.latitude}
-                            longitud={lastKnownLocationRef.current?.coords?.longitude}
-                            heading={heading}
+                            latitud={currentLocation?.coords?.latitude}
+                            longitud={currentLocation?.coords?.longitude}
+                            altitud={altitud}
+                            altitudeAccuracy={altitudeAccuracy}
                             timestamp={capturedAt ?? new Date().toISOString()}
                         />
                     </View>
                 </ViewShot>
             </View>
 
-            {/* Modales */}
             <ActividadSelectorModal
                 visible={selectorVisible}
                 actividades={actividades}
@@ -573,13 +501,19 @@ export default function CameraScreen() {
             />
         </SafeAreaView>
     );
-};
+}
+
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#000000' },
     darkBackground: { flex: 1, backgroundColor: '#000000' },
     centerContent: { justifyContent: 'center', alignItems: 'center', padding: 20 },
     permissionText: { color: '#FFFFFF', fontSize: 16, marginBottom: 20 },
-    permissionButton: { backgroundColor: '#7A1C1C', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
+    permissionButton: {
+        backgroundColor: '#7A1C1C',
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 8,
+    },
     permissionButtonText: { color: '#FFFFFF', fontWeight: 'bold' },
     cameraContainer: {
         flex: 1,
@@ -590,8 +524,6 @@ const styles = StyleSheet.create({
         position: 'relative',
         overflow: 'hidden',
     },
-    floatingCircleWrapper: { position: 'absolute', bottom: 16, right: 16 },
-    floatingCircle: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.65)' },
     hiddenWatermarkContainer: {
         position: 'absolute',
         top: 0,

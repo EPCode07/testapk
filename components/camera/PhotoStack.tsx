@@ -18,7 +18,6 @@ export default function PhotoStack({
 }: Props) {
     return (
         <View style={styles.wrapper}>
-            {/* Círculo: previsualizar última foto */}
             <TouchableOpacity
                 style={styles.thumbnailContainer}
                 onPress={onPreview}
@@ -39,7 +38,6 @@ export default function PhotoStack({
                 )}
             </TouchableOpacity>
 
-            {/* Flecha: ir a galería/lista */}
             <TouchableOpacity
                 style={styles.arrowBadge}
                 onPress={onOpenGallery}

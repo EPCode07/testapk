@@ -1,11 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as Sharing from 'expo-sharing';
 import { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Dimensions,
     Image,
     Modal,
+    Platform,
     RefreshControl,
     ScrollView,
     Share,
@@ -21,9 +24,6 @@ import {
     useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 
-import {
-    useSpeechRecognitionEvent,
-} from 'expo-speech-recognition';
 import AppHeader from '../../../components/AppHeader';
 import {
     EstacionGaleriaItem,
@@ -55,19 +55,10 @@ export default function GaleriaEstacionScreen() {
     const [refrescando, setRefrescando] = useState(false);
     const [tabActivo, setTabActivo] = useState<'local' | 'compartidas'>('local');
     const [busqueda, setBusqueda] = useState('');
-    const [isListening, setIsListening] = useState(false);
 
     const [estacionesDisponibles, setEstacionesDisponibles] = useState<EstacionGaleriaItem[]>([]);
     const [modalEstacionesVisible, setModalEstacionesVisible] = useState(false);
     const [fotoSeleccionada, setFotoSeleccionada] = useState<FotoGaleria | null>(null);
-
-    useSpeechRecognitionEvent('start', () => setIsListening(true));
-    useSpeechRecognitionEvent('end', () => setIsListening(false));
-    useSpeechRecognitionEvent('error', () => setIsListening(false));
-    useSpeechRecognitionEvent('result', (event) => {
-        const texto = event.results[0]?.transcript;
-        if (texto) setBusqueda(texto);
-    });
 
     const cargarFotos = useCallback(
         async (id: number, soloCompartidas: boolean) => {
@@ -83,7 +74,6 @@ export default function GaleriaEstacionScreen() {
                     setEstacionesDisponibles(resProyecto.estaciones);
                 }
             } catch (err) {
-                console.log('Error cargando fotos de estación:', err);
             } finally {
                 setCargando(false);
                 setRefrescando(false);
@@ -93,11 +83,14 @@ export default function GaleriaEstacionScreen() {
     );
 
     useEffect(() => {
-        if (estacionId) {
-            setCargando(true);
-            cargarFotos(estacionId, tabActivo === 'compartidas');
-        }
+        if (!estacionId) return;
+
+        queueMicrotask(() => setCargando(true));
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        cargarFotos(estacionId, tabActivo === 'compartidas');
     }, [estacionId, tabActivo, cargarFotos]);
+
+
 
     const onRefresh = () => {
         if (!estacionId) return;
@@ -121,18 +114,38 @@ export default function GaleriaEstacionScreen() {
 
     const handleCompartir = async (foto: FotoGaleria) => {
         try {
-            await Share.share({
-                title: 'Foto de estación ' + (params.estacionNombre ?? ''),
-                message: `Foto de actividad: ${foto.actividadNombre ?? ''}\nFecha: ${new Date(
-                    foto.timestamp || foto.creadoEn
-                ).toLocaleString('es-PE')}`,
-                url: foto.uriLocal,
+            if (Platform.OS === 'ios') {
+                await Share.share({
+                    title: `Foto de ${foto.actividadNombre ?? 'actividad'}`,
+                    message: `Foto de actividad: ${foto.actividadNombre ?? ''}\nFecha: ${new Date(
+                        foto.timestamp ?? foto.creadoEn ?? ''
+                    ).toLocaleString('es-PE')}`,
+                    url: foto.uriLocal,
+                });
+                return;
+            }
+
+            if (!(await Sharing.isAvailableAsync())) return;
+
+            let uriParaCompartir = foto.uriLocal;
+
+            if (!uriParaCompartir.startsWith('file://')) {
+                const destino = `${FileSystem.cacheDirectory}foto-${Date.now()}.jpg`;
+                const { uri } = await FileSystem.downloadAsync(
+                    uriParaCompartir,
+                    destino
+                );
+                uriParaCompartir = uri;
+            }
+
+            await Sharing.shareAsync(uriParaCompartir, {
+                dialogTitle: `Foto de ${foto.actividadNombre ?? 'actividad'}`,
+                mimeType: 'image/jpeg',
             });
-        } catch (err) {
-            console.log('Error al compartir foto:', err);
+        } catch (e) {
+            console.warn('Error compartiendo:', e);
         }
     };
-
     const gruposFiltrados = gruposFecha
         .map((grupo) => {
             if (!busqueda.trim()) return grupo;
@@ -169,7 +182,6 @@ export default function GaleriaEstacionScreen() {
                     }
                     showsVerticalScrollIndicator={false}
                 >
-                    {/* DROPDOWN SELECTOR DE PROYECTO | ESTACIÓN */}
                     <TouchableOpacity
                         style={styles.stationDropdown}
                         activeOpacity={0.8}
@@ -196,7 +208,6 @@ export default function GaleriaEstacionScreen() {
                         )}
                     </TouchableOpacity>
 
-                    {/* BUSCADOR */}
                     <View style={styles.searchBar}>
                         <Ionicons name="search-outline" size={20} color="#9CA3AF" />
                         <TextInput
@@ -211,19 +222,8 @@ export default function GaleriaEstacionScreen() {
                                 <Ionicons name="close-circle" size={18} color="#9CA3AF" />
                             </TouchableOpacity>
                         )}
-                        <TouchableOpacity style={styles.searchActionBtn}>
-                            <Ionicons
-                                name="mic-outline"
-                                size={20}
-                                color={isListening ? '#B5121B' : '#6B7280'}
-                            />
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.searchActionBtn}>
-                            <Ionicons name="funnel-outline" size={19} color="#6B7280" />
-                        </TouchableOpacity>
                     </View>
 
-                    {/* SELECTOR DE PESTAÑAS: LOCAL / COMPARTIDAS */}
                     <View style={styles.tabsRow}>
                         <TouchableOpacity
                             style={[
@@ -278,7 +278,6 @@ export default function GaleriaEstacionScreen() {
                         </TouchableOpacity>
                     </View>
 
-                    {/* LISTADO DE FOTOS POR FECHA */}
                     {cargando ? (
                         <View style={styles.center}>
                             <ActivityIndicator size="large" color="#B5121B" />
@@ -325,7 +324,6 @@ export default function GaleriaEstacionScreen() {
                     )}
                 </ScrollView>
 
-                {/* MODAL CAMBIAR ESTACIÓN */}
                 <Modal
                     visible={modalEstacionesVisible}
                     transparent
@@ -383,7 +381,6 @@ export default function GaleriaEstacionScreen() {
                     </TouchableOpacity>
                 </Modal>
 
-                {/* MODAL VISOR DE FOTO */}
                 <Modal
                     visible={!!fotoSeleccionada}
                     transparent
@@ -479,7 +476,6 @@ const styles = StyleSheet.create({
         paddingBottom: 24,
     },
 
-    // DROPDOWN ESTACIÓN
     stationDropdown: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -520,7 +516,6 @@ const styles = StyleSheet.create({
         color: '#8A151B',
     },
 
-    // BUSCADOR
     searchBar: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -549,12 +544,7 @@ const styles = StyleSheet.create({
     clearBtn: {
         padding: 4,
     },
-    searchActionBtn: {
-        padding: 6,
-        marginLeft: 4,
-    },
 
-    // PILLS TABS
     tabsRow: {
         flexDirection: 'row',
         gap: 10,
@@ -710,7 +700,6 @@ const styles = StyleSheet.create({
         color: '#9CA3AF',
     },
 
-    // VISOR DE FOTO
     photoViewerOverlay: {
         flex: 1,
         backgroundColor: '#000000',

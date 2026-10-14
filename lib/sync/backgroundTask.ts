@@ -60,8 +60,7 @@ export async function registerBackgroundSync() {
   if (already) return;
 
   await BackgroundTask.registerTaskAsync(SYNC_TASK_NAME, {
-    minimumInterval: 15, // ⚠️ AHORA son MINUTOS, no segundos
+    minimumInterval: 15,
   });
 
-  console.log('[BackgroundSync] Tarea registrada cada 15 min');
 }

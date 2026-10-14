@@ -4,7 +4,10 @@ import { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Dimensions,
+    Keyboard,
     Modal,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -27,7 +30,6 @@ type Props = {
     onClose: () => void;
     onGuardado?: () => void;
     sucesoEditando?: Suceso | null;
-    // 🔑 Si viene esta prop, es "modo contexto" (desde álbum) - readonly
     contextoActividad?: SeleccionContexto | null;
 };
 
@@ -51,11 +53,12 @@ export default function SucesoModal({
     const [selectorCatVisible, setSelectorCatVisible] = useState(false);
     const [nuevaCatVisible, setNuevaCatVisible] = useState(false);
 
-    // 🔑 Contexto (proyecto + estación + actividad)
     const [contexto, setContexto] = useState<SeleccionContexto | null>(null);
     const [selectorNivel, setSelectorNivel] = useState<
         'proyecto' | 'estacion' | 'actividad' | null
     >(null);
+
+    const [keyboardHeight, setKeyboardHeight] = useState(0);
 
     const esModoContexto = !!contextoActividad;
 
@@ -65,24 +68,39 @@ export default function SucesoModal({
 
         if (sucesoEditando) {
             const cat = categorias.find((c) => c.id === sucesoEditando.categoria_id) ?? null;
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setCategoriaSeleccionada(cat);
             setDescripcion(sucesoEditando.descripcion ?? '');
             setValor(sucesoEditando.valor != null ? String(sucesoEditando.valor) : '');
             setContexto(null);
         } else if (contextoActividad) {
-            // Modo contexto: ya viene todo
             setContexto(contextoActividad);
             setCategoriaSeleccionada(null);
             setDescripcion('');
             setValor('');
         } else {
-            // Modo tab: precargar última combinación o limpiar
             setContexto(ultimoContexto);
             setCategoriaSeleccionada(null);
             setDescripcion('');
             setValor('');
         }
     }, [visible, sucesoEditando?.id, contextoActividad, ultimoContexto]);
+
+    useEffect(() => {
+        const showSub = Keyboard.addListener(
+            Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+            (e) => setKeyboardHeight(e.endCoordinates.height)
+        );
+        const hideSub = Keyboard.addListener(
+            Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+            () => setKeyboardHeight(0)
+        );
+
+        return () => {
+            showSub.remove();
+            hideSub.remove();
+        };
+    }, []);
 
     const handleGuardar = async () => {
         if (!esModoContexto && !contexto) {
@@ -112,7 +130,9 @@ export default function SucesoModal({
                     descripcion: descripcion.trim() || undefined,
                     valor: valor ? Number(valor) : undefined,
                 });
-                Alert.alert('✅ Actualizado', 'El suceso se guardó correctamente.');
+                if (!onGuardado) {
+                    Alert.alert('✅ Actualizado', 'El suceso se guardó correctamente.');
+                }
             } else {
                 // GPS
                 let lat: number | undefined;
@@ -138,18 +158,19 @@ export default function SucesoModal({
                     categoriaSnapshot: categoriaSeleccionada,
                 });
 
-                // Guardar la combinación para la próxima
                 if (!esModoContexto && contexto) {
                     setUltimoContexto(contexto);
                 }
 
-                if (res.offline) {
-                    Alert.alert(
-                        '⏳ Guardado local',
-                        'El suceso se guardó localmente. Se enviará al servidor cuando haya conexión.'
-                    );
-                } else {
-                    Alert.alert('✅ Guardado', 'El suceso se registró correctamente.');
+                if (!onGuardado) {
+                    if (res.offline) {
+                        Alert.alert(
+                            '⏳ Guardado local',
+                            'El suceso se guardó localmente. Se enviará al servidor cuando haya conexión.'
+                        );
+                    } else {
+                        Alert.alert('✅ Guardado', 'El suceso se registró correctamente.');
+                    }
                 }
             }
 
@@ -162,10 +183,20 @@ export default function SucesoModal({
         }
     };
 
+    const { height: screenHeight } = Dimensions.get('window');
+
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
             <View style={styles.backdrop}>
-                <View style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
+                <View
+                    style={[
+                        styles.sheet,
+                        {
+                            paddingBottom: insets.bottom + 16,
+                            maxHeight: screenHeight * 0.9,
+                        },
+                    ]}
+                >
                     <View style={styles.header}>
                         <Text style={styles.title}>
                             {sucesoEditando ? 'Editar suceso' : 'Nuevo suceso'}
@@ -177,8 +208,15 @@ export default function SucesoModal({
 
                     <ScrollView
                         style={styles.body}
-                        contentContainerStyle={styles.bodyContent}
+                        contentContainerStyle={[
+                            styles.bodyContent,
+                            {
+                                paddingBottom: keyboardHeight > 0 ? keyboardHeight + 40 : 24,
+                            },
+                        ]}
                         keyboardShouldPersistTaps="handled"
+                        keyboardDismissMode="interactive"
+                        automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
                     >
                         {/* ====== MODO CONTEXTO: readonly ====== */}
                         {esModoContexto && contextoActividad ? (
@@ -277,7 +315,6 @@ export default function SucesoModal({
                             </>
                         )}
 
-                        {/* Categoría */}
                         <Text style={styles.label}>Categoría *</Text>
                         <TouchableOpacity
                             style={[
@@ -307,7 +344,6 @@ export default function SucesoModal({
                             <Ionicons name="chevron-down" size={18} color="#6B7280" />
                         </TouchableOpacity>
 
-                        {/* Valor */}
                         {categoriaSeleccionada?.unidad && (
                             <>
                                 <Text style={styles.label}>
@@ -324,7 +360,6 @@ export default function SucesoModal({
                             </>
                         )}
 
-                        {/* Descripción */}
                         <Text style={styles.label}>Descripción (opcional)</Text>
                         <TextInput
                             style={[styles.input, styles.textarea]}
@@ -353,10 +388,11 @@ export default function SucesoModal({
                             </>
                         )}
                     </TouchableOpacity>
+
+
                 </View>
             </View>
 
-            {/* Modales anidados */}
             <SucesoCategoriaSelector
                 visible={selectorCatVisible}
                 categorias={categorias}
@@ -378,7 +414,6 @@ export default function SucesoModal({
                 onCreada={(cat) => setCategoriaSeleccionada(cat)}
             />
 
-            {/* Selector de contexto */}
             <ProyectoEstacionActividadSelector
                 visible={selectorNivel !== null}
                 nivel={selectorNivel ?? 'proyecto'}
@@ -398,7 +433,6 @@ export default function SucesoModal({
                         : null
                 }
                 onSelectProyecto={(p) => {
-                    // Al cambiar proyecto, resetear estación y actividad
                     setContexto({
                         proyectoId: p.id,
                         proyectoNombre: p.nombre,
@@ -450,7 +484,9 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
-        maxHeight: '90%',
+        paddingHorizontal: 10,
+        paddingTop: 16,
+        maxHeight: '92%',
     },
     header: {
         flexDirection: 'row',

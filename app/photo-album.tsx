@@ -1,6 +1,7 @@
+import { useSafeNavigate } from '@/hooks/useSafeNavigate';
 import { Ionicons } from '@expo/vector-icons';
 import * as MediaLibrary from 'expo-media-library/legacy';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+
 import { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
@@ -22,26 +23,22 @@ import { FotoCaptura } from '../lib/actividades/types';
 import { useSync } from '../lib/sync/SyncContext';
 
 import SucesoModal from '@/components/sucesos/SucesoModal';
-import {
-    ExpoSpeechRecognitionModule,
-} from 'expo-speech-recognition';
+import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 
 export default function PhotoAlbumScreen() {
-    const router = useRouter();
-    const params = useLocalSearchParams<{ nextActividadId?: string }>();
+    const router = useSafeNavigate();
     const inputRef = useRef<TextInput>(null);
+
     const [sucesoModalVisible, setSucesoModalVisible] = useState(false);
+    const [esperandoConfirmacionSuceso, setEsperandoConfirmacionSuceso] = useState(false);
 
     const {
         actividadEnCurso,
         actualizarDescripcionGeneral,
-        eliminarFoto,
         marcarExportada,
         descartarActividadEnCurso,
-        setActividadActual,
         proyectoId,
         marcarFotosSubidas,
-
     } = useActividad();
 
     const { addExportacionToQueue } = useSync();
@@ -56,26 +53,18 @@ export default function PhotoAlbumScreen() {
     const [editandoDescripcion, setEditandoDescripcion] = useState(false);
     const [descripcionTemporal, setDescripcionTemporal] = useState('');
     const [isListening, setIsListening] = useState(false);
-    const textoBaseRef = useRef('');   // guarda el texto previo al dictado
-
+    const textoBaseRef = useRef('');
 
     const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         if (actividadEnCurso) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setDescripcion(actividadEnCurso.descripcionGeneral ?? '');
             setConforme(actividadEnCurso.conforme ?? null);
         }
     }, [actividadEnCurso?.idLocal]);
 
-    useEffect(() => {
-        if (actividadEnCurso) {
-        }
-    }, [actividadEnCurso]);
-
-
-
-    // 🔑 Cleanup del debounce
     useEffect(() => {
         return () => {
             if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -89,28 +78,24 @@ export default function PhotoAlbumScreen() {
 
         const subEnd = ExpoSpeechRecognitionModule.addListener('end', () => {
             setIsListening(false);
-            // 🔑 El baseRef se actualiza en el próximo `iniciarBusquedaPorVoz`
         });
 
-        const subResult = ExpoSpeechRecognitionModule.addListener('result', (event: any) => {
-            const texto = event.results[0]?.transcript ?? '';
-            if (texto) {
-                // 🔑 Reemplazar SIEMPRE: textoBase + textoDictado
-                const base = textoBaseRef.current.trimEnd();
-                const nuevo = base.length > 0 ? `${base} ${texto}` : texto;
-                setDescripcionTemporal(nuevo);
+        const subResult = ExpoSpeechRecognitionModule.addListener(
+            'result',
+            (event: any) => {
+                const texto = event.results[0]?.transcript ?? '';
+                if (texto) {
+                    const base = textoBaseRef.current.trimEnd();
+                    const nuevo = base.length > 0 ? `${base} ${texto}` : texto;
+                    setDescripcionTemporal(nuevo);
+                }
             }
-        });
-
-        const subError = ExpoSpeechRecognitionModule.addListener('end', () => {
-            setIsListening(false);
-        });
+        );
 
         return () => {
             subStart.remove();
             subEnd.remove();
             subResult.remove();
-            subError.remove();
         };
     }, []);
 
@@ -126,7 +111,6 @@ export default function PhotoAlbumScreen() {
         }
         : null;
 
-
     const iniciarBusquedaPorVoz = async () => {
         const { granted } = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
         if (!granted) {
@@ -134,11 +118,9 @@ export default function PhotoAlbumScreen() {
             return;
         }
 
-        // 🔑 SIEMPRE capturar el texto actual como base
         const textoActual = editandoDescripcion ? descripcionTemporal : descripcion;
         textoBaseRef.current = textoActual;
 
-        // Activar modo edición si no lo está
         if (debeMostrarReadonly) {
             setDescripcionTemporal(textoActual);
             setEditandoDescripcion(true);
@@ -157,19 +139,20 @@ export default function PhotoAlbumScreen() {
             continuous: false,
             requiresOnDeviceRecognition: false,
             androidIntentOptions: {
-                EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS: 10000, // 10 segundos
+                EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS: 10000,
                 EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS: 10000,
                 EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS: 1500,
-            }
+            },
         });
     };
+
     const detenerBusquedaPorVoz = () => {
         ExpoSpeechRecognitionModule.stop();
         setIsListening(false);
     };
 
     // ============================================================
-    // DERIVADOS (no son hooks, van antes del early return)
+    // DERIVADOS
     // ============================================================
 
     const totalFotos = actividadEnCurso?.fotos.length ?? 0;
@@ -185,7 +168,7 @@ export default function PhotoAlbumScreen() {
         estaExportada && tieneDescripcion && !editandoDescripcion;
 
     // ============================================================
-    // EARLY RETURN (ahora sí, después de todos los hooks)
+    // EARLY RETURN
     // ============================================================
 
     if (!actividadEnCurso) {
@@ -210,6 +193,22 @@ export default function PhotoAlbumScreen() {
             </SafeAreaView>
         );
     }
+
+    // ============================================================
+    // NAVEGACIÓN
+    // ============================================================
+
+    const irAProyectoDetalle = () => {
+        if (proyectoId) {
+            router.dismissTo({
+                pathname: '/proyecto/[id]',
+                params: { id: String(proyectoId) },
+            });
+        } else {
+            router.dismissAll();
+            router.replace('/(tabs)' as any);
+        }
+    };
 
     // ============================================================
     // HANDLERS
@@ -237,7 +236,7 @@ export default function PhotoAlbumScreen() {
                             router.back();
                         } else {
                             router.replace('/(tabs)' as any);
-                        };
+                        }
                     },
                 },
             ]
@@ -266,6 +265,26 @@ export default function PhotoAlbumScreen() {
         setDescripcionTemporal('');
     };
 
+    const handleCerrarSucesoModal = () => {
+        setSucesoModalVisible(false);
+
+        if (esperandoConfirmacionSuceso) {
+            setEsperandoConfirmacionSuceso(false);
+            irAProyectoDetalle();
+        }
+    };
+
+    const handleSucesoGuardado = () => {
+        setSucesoModalVisible(false);
+        setEsperandoConfirmacionSuceso(false);
+
+        Alert.alert(
+            '✅ Suceso guardado',
+            'El suceso diario se guardó correctamente.',
+            [{ text: 'OK', onPress: irAProyectoDetalle }]
+        );
+    };
+
     const handleExportar = async () => {
         if (exportando) return;
 
@@ -277,11 +296,9 @@ export default function PhotoAlbumScreen() {
             return;
         }
 
-        // 🔑 Filtrar SOLO las fotos que no fueron subidas aún
         const fotosNuevas = actividadEnCurso.fotos.filter((f) => !f.subidaAlServidor);
 
         if (fotosNuevas.length === 0) {
-            // No hay fotos nuevas. Si la actividad ya estaba exportada, no hacer nada.
             if (
                 actividadEnCurso.estado === 'exportada' ||
                 actividadEnCurso.estado === 'pendiente_subida'
@@ -292,7 +309,6 @@ export default function PhotoAlbumScreen() {
                 );
                 return;
             }
-            // Si la actividad está en borrador y no hay fotos, error
             Alert.alert(
                 'Sin fotos',
                 'Debes tomar al menos una foto antes de exportar.'
@@ -304,7 +320,6 @@ export default function PhotoAlbumScreen() {
         try {
             await actualizarDescripcionGeneral(descripcion, conforme);
 
-            // Guardar en galería SOLO las nuevas
             for (const foto of fotosNuevas) {
                 try {
                     await MediaLibrary.saveToLibraryAsync(foto.uriLocal);
@@ -313,7 +328,6 @@ export default function PhotoAlbumScreen() {
                 }
             }
 
-            // 🔑 Payload con SOLO las fotos nuevas
             const actividadParaEnviar = {
                 ...actividadEnCurso,
                 descripcionGeneral: descripcion,
@@ -336,41 +350,29 @@ export default function PhotoAlbumScreen() {
                 Alert.alert(
                     '⏳ Guardado localmente',
                     `Las ${fotosNuevas.length} foto(s) nuevas se guardaron en tu galería. Se subirán al servidor automáticamente cuando haya conexión.\n\nMotivo: ${resultado.message}`,
-                    [
-                        {
-                            text: 'OK',
-                            onPress: () => {
-                                if (proyectoId) {
-                                    router.replace(`/proyecto/${proyectoId}` as any);
-                                } else {
-                                    router.replace('/(tabs)' as any);
-                                }
-                            },
-                        },
-                    ]
+                    [{ text: 'OK', onPress: irAProyectoDetalle }]
                 );
                 return;
             }
 
-            // 🔑 Marcar las fotos como subidas
             await marcarFotosSubidas(fotosNuevas.map((f) => f.idLocal));
-
             await marcarExportada();
 
-            setSucesoModalVisible(true);
-
+            // 👇 Alerta con 2 opciones: Salir directo o ir a Sucesos diarios
             Alert.alert(
-                '✅ Actividad exportada',
-                `${fotosNuevas.length} foto(s) subidas al servidor correctamente.`,
+                '✅ Guardado con éxito',
+                `${fotosNuevas.length} foto(s) subidas al servidor correctamente.\n\n¿Quieres agregar sucesos diarios?`,
                 [
                     {
-                        text: 'OK',
+                        text: 'Salir',
+                        style: 'cancel',
+                        onPress: irAProyectoDetalle,
+                    },
+                    {
+                        text: 'Sucesos diarios',
                         onPress: () => {
-                            if (proyectoId) {
-                                router.replace(`/proyecto/${proyectoId}` as any);
-                            } else {
-                                router.replace('/(tabs)' as any);
-                            }
+                            setEsperandoConfirmacionSuceso(true);
+                            setSucesoModalVisible(true);
                         },
                     },
                 ]
@@ -423,6 +425,7 @@ export default function PhotoAlbumScreen() {
                     <Ionicons name="trash-outline" size={22} color="#B5121B" />
                 </TouchableOpacity>
             </View>
+
             <ScrollView
                 style={styles.scroll}
                 contentContainerStyle={styles.scrollContent}
@@ -440,11 +443,7 @@ export default function PhotoAlbumScreen() {
                             <Image source={{ uri: foto.uriLocal }} style={styles.gridImage} />
                             {foto.descripcionIndividual ? (
                                 <View style={styles.descBadge}>
-                                    <Ionicons
-                                        name="document-text"
-                                        size={10}
-                                        color="#FFFFFF"
-                                    />
+                                    <Ionicons name="document-text" size={10} color="#FFFFFF" />
                                 </View>
                             ) : null}
                         </TouchableOpacity>
@@ -476,15 +475,12 @@ export default function PhotoAlbumScreen() {
                 </View>
 
                 {debeMostrarReadonly ? (
-                    // 🔒 Modo readonly
                     <View style={styles.readonlyBox}>
                         <Text style={styles.readonlyText} numberOfLines={12}>
                             {actividadEnCurso.descripcionGeneral}
                         </Text>
 
                         <View style={styles.readonlyActions}>
-
-
                             <TouchableOpacity
                                 style={styles.editBtn}
                                 onPress={() => {
@@ -499,7 +495,6 @@ export default function PhotoAlbumScreen() {
                         </View>
                     </View>
                 ) : (
-                    // ✏️ Modo editable
                     <>
                         <TextInput
                             ref={inputRef}
@@ -589,26 +584,17 @@ export default function PhotoAlbumScreen() {
                         <ActivityIndicator size="small" color="#FFFFFF" />
                     ) : (
                         <>
-                            <Ionicons
-                                name="cloud-upload-outline"
-                                size={20}
-                                color="#FFFFFF"
-                            />
+                            <Ionicons name="cloud-upload-outline" size={20} color="#FFFFFF" />
                             <Text style={styles.exportBtnText}>Exportar actividad</Text>
                         </>
                     )}
                 </TouchableOpacity>
             </View>
+
             <SucesoModal
                 visible={sucesoModalVisible}
-                onClose={() => {
-                    setSucesoModalVisible(false);
-                    if (proyectoId) {
-                        router.replace(`/proyecto/${proyectoId}` as any);
-                    } else {
-                        router.replace('/(tabs)' as any);
-                    }
-                }}
+                onClose={handleCerrarSucesoModal}
+                onGuardado={handleSucesoGuardado}
                 contextoActividad={contextoActividad}
             />
         </SafeAreaView>

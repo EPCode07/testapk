@@ -16,9 +16,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import {
-    useSpeechRecognitionEvent,
-} from 'expo-speech-recognition';
 import AppHeader from '../../components/AppHeader';
 import { galeriaService, ProyectoGaleriaItem } from '../../lib/galeria/galeriaService';
 
@@ -34,22 +31,13 @@ export default function GaleriaScreen() {
     const [cargando, setCargando] = useState(true);
     const [refrescando, setRefrescando] = useState(false);
     const [busqueda, setBusqueda] = useState('');
-    const [isListening, setIsListening] = useState(false);
 
-    useSpeechRecognitionEvent('start', () => setIsListening(true));
-    useSpeechRecognitionEvent('end', () => setIsListening(false));
-    useSpeechRecognitionEvent('error', () => setIsListening(false));
-    useSpeechRecognitionEvent('result', (event) => {
-        const texto = event.results[0]?.transcript;
-        if (texto) setBusqueda(texto);
-    });
 
     const cargar = useCallback(async () => {
         try {
             const lista = await galeriaService.listarProyectosConFotos();
             setProyectos(lista);
         } catch (err) {
-            console.log('Error cargando galería de proyectos:', err);
         } finally {
             setCargando(false);
             setRefrescando(false);
@@ -110,16 +98,6 @@ export default function GaleriaScreen() {
                                 <Ionicons name="close-circle" size={18} color="#9CA3AF" />
                             </TouchableOpacity>
                         )}
-                        <TouchableOpacity style={styles.searchActionBtn}>
-                            <Ionicons
-                                name="mic-outline"
-                                size={20}
-                                color={isListening ? '#B5121B' : '#6B7280'}
-                            />
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.searchActionBtn}>
-                            <Ionicons name="funnel-outline" size={19} color="#6B7280" />
-                        </TouchableOpacity>
                     </View>
 
                     {cargando ? (

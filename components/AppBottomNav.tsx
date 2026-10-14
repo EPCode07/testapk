@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export type TabKey = 'inicio' | 'mapa' | 'galeria' | 'reportes' | 'ajustes' | 'sucesos';
+export type TabKey = 'inicio' | 'camera_now' | 'galeria' | 'reportes' | 'ajustes' | 'sucesos';
 
 interface Props {
     active: TabKey;
@@ -15,7 +15,6 @@ export default function AppBottomNav({ active }: Props) {
     const isActive = (key: TabKey) => active === key;
     const color = (key: TabKey) => (isActive(key) ? '#7A1C1C' : '#555555');
 
-    // 🔑 navigate en lugar de replace
     const goTo = (path: string) => router.navigate(path as any);
 
     return (
@@ -24,7 +23,11 @@ export default function AppBottomNav({ active }: Props) {
                 style={styles.navItem}
                 onPress={() => goTo('/(tabs)')}
             >
-                <Octicons name="home" size={22} color={color('inicio')} />
+                <Octicons
+                    name={isActive('inicio') ? 'home-fill' : 'home'}
+                    size={22}
+                    color={color('inicio')}
+                />
                 <Text style={[styles.navLabel, isActive('inicio') && styles.navLabelActive]}>
                     Inicio
                 </Text>
@@ -34,7 +37,11 @@ export default function AppBottomNav({ active }: Props) {
                 style={styles.navItem}
                 onPress={() => goTo('/(tabs)/mis-reportes')}
             >
-                <Ionicons name="document-text-outline" size={22} color={color('reportes')} />
+                <Ionicons
+                    name={isActive('reportes') ? 'document-text' : 'document-text-outline'}
+                    size={22}
+                    color={color('reportes')}
+                />
                 <Text style={[styles.navLabel, isActive('reportes') && styles.navLabelActive]}>
                     Mis Reportes
                 </Text>
@@ -45,7 +52,11 @@ export default function AppBottomNav({ active }: Props) {
                 style={styles.navItem}
                 onPress={() => goTo('/(tabs)/sucesos')}
             >
-                <Ionicons name="list-outline" size={22} color={color('sucesos')} />
+                <Ionicons
+                    name={isActive('sucesos') ? 'list' : 'list-outline'}
+                    size={22}
+                    color={color('sucesos')}
+                />
                 <Text style={[styles.navLabel, isActive('sucesos') && styles.navLabelActive]}>
                     Sucesos
                 </Text>
@@ -54,11 +65,15 @@ export default function AppBottomNav({ active }: Props) {
 
             <TouchableOpacity
                 style={styles.navItem}
-                onPress={() => goTo('/(tabs)/mapa')}
+                onPress={() => goTo('/(tabs)/camera_now')}
             >
-                <Ionicons name="location-outline" size={22} color={color('mapa')} />
-                <Text style={[styles.navLabel, isActive('mapa') && styles.navLabelActive]}>
-                    Mapa
+                <Ionicons
+                    name={isActive('camera_now') ? 'camera' : 'camera-outline'}
+                    size={22}
+                    color={color('camera_now')}
+                />
+                <Text style={[styles.navLabel, isActive('camera_now') && styles.navLabelActive]}>
+                    Cámara
                 </Text>
             </TouchableOpacity>
 
@@ -80,7 +95,11 @@ export default function AppBottomNav({ active }: Props) {
                 style={styles.navItem}
                 onPress={() => goTo('/(tabs)/ajustes')}
             >
-                <Ionicons name="settings-sharp" size={22} color={color('ajustes')} />
+                <Ionicons
+                    name={isActive('ajustes') ? 'settings' : 'settings-outline'}
+                    size={22}
+                    color={color('ajustes')}
+                />
                 <Text style={[styles.navLabel, isActive('ajustes') && styles.navLabelActive]}>
                     Ajustes
                 </Text>

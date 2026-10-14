@@ -80,7 +80,6 @@ export function ActividadProvider({ children }: { children: ReactNode }) {
         // 🔑 Limpieza de duplicados al arrancar
         actividadStorage.limpiarDuplicados().then((eliminados) => {
             if (eliminados > 0) {
-                console.log(`🧹 ${eliminados} actividades duplicadas eliminadas`);
             }
         });
     }, []);

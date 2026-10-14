@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, ImageBackground, StyleSheet, Text, View } from 'react-native';
-import { formatCoord, formatFechaHora, formatHeading } from '../lib/location/formatLocation';
+import { formatCoord, formatFechaHora } from '../lib/location/formatLocation';
 import { DireccionInfo } from '../lib/location/reverseGeocode';
 
 type Variant = 'watermark' | 'overlay';
@@ -8,6 +8,8 @@ type Variant = 'watermark' | 'overlay';
 interface Props {
     direccion: DireccionInfo | null;
     cargandoDireccion?: boolean;
+    altitud?: number | null;
+    altitudeAccuracy?: number | null;
     latitud?: number;
     longitud?: number;
     heading?: number | null;
@@ -18,6 +20,8 @@ interface Props {
 export default function WatermarkCard({
     direccion,
     cargandoDireccion = false,
+    altitud,
+    altitudeAccuracy,
     latitud,
     longitud,
     heading,
@@ -26,6 +30,7 @@ export default function WatermarkCard({
 }: Props) {
     const isWatermark = variant === 'watermark';
     const { fecha, hora } = formatFechaHora(timestamp);
+
 
     return (
         <View style={[styles.card, isWatermark && styles.cardWatermark]}>
@@ -79,14 +84,12 @@ export default function WatermarkCard({
             {/* Columna 3: Heading + Fecha + Hora */}
             <View style={styles.column}>
                 <View style={styles.metaRow}>
-                    <Ionicons
-                        name="compass-outline"
-                        size={24}
-                        color="#FFFFFF"
-                    />
+                    <Ionicons name="trending-up-outline" size={24} color="#FFFFFF" />
                     <Text style={[styles.text, isWatermark && styles.textWatermark]}>
-                        {' '}{formatHeading(heading ?? null)}
-                    </Text>
+                        {' '}
+                        {altitud != null && altitud !== 0
+                            ? `${Math.round(altitud)} m${altitudeAccuracy ? ` ±${Math.round(altitudeAccuracy)}` : ''}`
+                            : '--'}                 </Text>
                 </View>
                 <View style={styles.metaRow}>
                     <Ionicons
@@ -143,7 +146,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     mapThumbWatermark: {
-        width: 96,              // 👈 más grande
+        width: 96,
         height: 96,
         borderRadius: 12,
     },
@@ -174,7 +177,7 @@ const styles = StyleSheet.create({
         lineHeight: 14,
     },
     textWatermark: {
-        fontSize: 20,           // 👈 más grande
+        fontSize: 20,
         lineHeight: 28,
     },
     bold: {

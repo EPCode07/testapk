@@ -85,7 +85,6 @@ export const actividadStorage = {
         const todas = await leer();
         const limpias = fusionarDuplicados(todas);
         if (limpias.length !== todas.length) {
-            console.log(`🔀 Fusionados: ${todas.length} → ${limpias.length}`);
             await escribir(limpias);
         }
         return limpias;

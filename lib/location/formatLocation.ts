@@ -16,11 +16,11 @@ export function formatCoord(value: number, axis: 'lat' | 'lng'): string {
  */
 export function formatHeading(deg: number | null | undefined): string {
     if (deg == null) return '--';
-    const cardinales = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-    const idx = Math.round(deg / 45) % 8;
-    return `${cardinales[idx]} ${Math.round(deg)}°`;
+    const cardinales = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
+    const normalizado = ((deg % 360) + 360) % 360;
+    const idx = Math.round(normalizado / 45) % 8;
+    return `${cardinales[idx]}: ${Math.round(normalizado)}°`;
 }
-
 /**
  * Convierte "2026-09-26T22:35:00Z" → { fecha: "26/09/26", hora: "10:35 pm" }
  */

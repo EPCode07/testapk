@@ -1,10 +1,14 @@
+import { Ionicons } from '@expo/vector-icons';
 import { CacheMetadata, proyectoCache } from './proyectoCache';
 import { Proyecto, proyectoService } from './proyectoService';
+
+// 👇 Tipo derivado del glyphMap: solo acepta nombres de iconos válidos de Ionicons
+export type NombreIcono = keyof typeof Ionicons.glyphMap;
 
 export type PasoDescarga = {
     id: 'proyectos' | 'estaciones' | 'actividades' | 'supervisores' | 'guardando';
     label: string;
-    icono: string;
+    icono: NombreIcono;
     estado: 'pendiente' | 'en_progreso' | 'completado' | 'error';
     detalle?: string;
     cantidad?: number;
@@ -24,11 +28,36 @@ export type DescargaResultado = {
 };
 
 const PASOS_INICIALES: PasoDescarga[] = [
-    { id: 'proyectos', label: 'Obteniendo proyectos...', icono: '📥', estado: 'pendiente' },
-    { id: 'estaciones', label: 'Obteniendo estaciones...', icono: '📍', estado: 'pendiente' },
-    { id: 'actividades', label: 'Obteniendo actividades...', icono: '📋', estado: 'pendiente' },
-    { id: 'supervisores', label: 'Obteniendo supervisores...', icono: '👥', estado: 'pendiente' },
-    { id: 'guardando', label: 'Guardando localmente...', icono: '💾', estado: 'pendiente' },
+    {
+        id: 'proyectos',
+        label: 'Obteniendo proyectos...',
+        icono: 'folder-outline',
+        estado: 'pendiente',
+    },
+    {
+        id: 'estaciones',
+        label: 'Obteniendo estaciones...',
+        icono: 'location-outline',
+        estado: 'pendiente',
+    },
+    {
+        id: 'actividades',
+        label: 'Obteniendo actividades...',
+        icono: 'list-outline',
+        estado: 'pendiente',
+    },
+    {
+        id: 'supervisores',
+        label: 'Obteniendo supervisores...',
+        icono: 'people-outline',
+        estado: 'pendiente',
+    },
+    {
+        id: 'guardando',
+        label: 'Guardando localmente...',
+        icono: 'save-outline',
+        estado: 'pendiente',
+    },
 ];
 
 /**
@@ -40,8 +69,6 @@ export async function descargarTodo(
 ): Promise<DescargaResultado> {
     let pasos: PasoDescarga[] = PASOS_INICIALES.map((p) => ({ ...p }));
 
-    // ---- Cálculo de porcentaje mejorado ----
-    // Cada paso vale 1 punto; "en_progreso" vale 0.5 para que la barra avance.
     const calcularPorcentaje = (): number => {
         const puntos = pasos.reduce((acc, p) => {
             if (p.estado === 'completado') return acc + 1;
@@ -85,7 +112,11 @@ export async function descargarTodo(
         try {
             proyectos = await proyectoService.listar();
         } catch (e: any) {
-            marcarPaso('proyectos', 'error', e?.message ?? 'Error al listar proyectos');
+            marcarPaso(
+                'proyectos',
+                'error',
+                e?.message ?? 'Error al listar proyectos'
+            );
             emitir(e?.message ?? 'Error al listar proyectos');
             return {
                 success: false,
@@ -94,7 +125,12 @@ export async function descargarTodo(
             };
         }
 
-        marcarPaso('proyectos', 'completado', `${proyectos.length} encontrados`, proyectos.length);
+        marcarPaso(
+            'proyectos',
+            'completado',
+            `${proyectos.length} encontrados`,
+            proyectos.length
+        );
         emitir();
 
         if (proyectos.length === 0) {
@@ -114,9 +150,21 @@ export async function descargarTodo(
 
         if (proyectos.length > 0) {
             // Marcar los tres pasos como en progreso al inicio
-            marcarPaso('estaciones', 'en_progreso', `0/${proyectos.length} proyectos`);
-            marcarPaso('actividades', 'en_progreso', `0/${proyectos.length} proyectos`);
-            marcarPaso('supervisores', 'en_progreso', `0/${proyectos.length} proyectos`);
+            marcarPaso(
+                'estaciones',
+                'en_progreso',
+                `0/${proyectos.length} proyectos`
+            );
+            marcarPaso(
+                'actividades',
+                'en_progreso',
+                `0/${proyectos.length} proyectos`
+            );
+            marcarPaso(
+                'supervisores',
+                'en_progreso',
+                `0/${proyectos.length} proyectos`
+            );
             emitir();
         }
 
@@ -133,12 +181,10 @@ export async function descargarTodo(
                 let supervisoresCount = 0;
 
                 detalle.estaciones?.forEach((est) => {
-                    // Actividades
                     est.servicios?.forEach((s) => {
                         actividadesCount += s.actividades?.length ?? 0;
                     });
 
-                    // 🔑 Supervisores externos viven en la ESTACIÓN, no en el proyecto
                     const sups = (est as any).supervisores_externos;
                     if (Array.isArray(sups)) {
                         supervisoresCount += sups.length;
@@ -152,7 +198,6 @@ export async function descargarTodo(
                 proyectosConError.push(p.id);
             }
 
-            // 🔑 Actualizar progreso UNA vez por proyecto (no 3)
             const detalle = `${i + 1}/${proyectos.length} proyectos procesados`;
             marcarPaso('estaciones', 'en_progreso', detalle, totalEstaciones);
             marcarPaso('actividades', 'en_progreso', detalle, totalActividades);
@@ -160,7 +205,6 @@ export async function descargarTodo(
             emitir();
         }
 
-        // Marcar los 3 pasos como completados
         const huboErrores = proyectosConError.length > 0;
         const sufijoErrores = huboErrores
             ? ` (${proyectosConError.length} con error)`
@@ -208,7 +252,6 @@ export async function descargarTodo(
     } catch (err: any) {
         const msg = err?.message ?? 'Error desconocido';
 
-        // Marcar como error todos los pasos que estén "en_progreso" o "pendiente"
         pasos = pasos.map((p) =>
             p.estado === 'en_progreso' || p.estado === 'pendiente'
                 ? { ...p, estado: 'error', detalle: msg }

@@ -107,7 +107,6 @@ export function SucesosProvider({ children }: { children: ReactNode }) {
             const catPendientes = await sucesosStorage.listarCategoriasPendientes();
 
             if (catPendientes.length > 0) {
-                console.log(`📡 Sincronizando ${catPendientes.length} categorías...`);
 
                 for (const cat of catPendientes) {
                     try {
@@ -127,9 +126,7 @@ export function SucesosProvider({ children }: { children: ReactNode }) {
                         // Eliminar de la cola de categorías
                         await sucesosStorage.eliminarCategoriaPendiente(cat.idTemporal);
 
-                        console.log(`✅ Categoría "${cat.nombre}" creada en server con ID ${res.categoria.id}`);
                     } catch (err: any) {
-                        console.warn(`⚠️ No se pudo subir categoría "${cat.nombre}":`, err?.message);
                     }
                 }
 
@@ -144,8 +141,6 @@ export function SucesosProvider({ children }: { children: ReactNode }) {
                 await refrescarPendientes();
                 return;
             }
-
-            console.log(`📡 Sincronizando ${cola.length} sucesos pendientes...`);
 
             let ok = 0;
             let fail = 0;
@@ -171,8 +166,6 @@ export function SucesosProvider({ children }: { children: ReactNode }) {
                     }
                 }
             }
-
-            console.log(`✅ Sincronización: ${ok} subidos, ${fail} fallidos`);
             await refrescarPendientes();
             await refrescarSucesos();
         } finally {
@@ -201,7 +194,6 @@ export function SucesosProvider({ children }: { children: ReactNode }) {
 
             // Si no hay red, encolar directamente sin intentar fetch
             if (!isOnline) {
-                console.log('📴 Sin conexión, encolando suceso localmente');
                 const cat = data.categoriaSnapshot;
                 await sucesosStorage.encolar({
                     categoria_id: data.categoria_id,
@@ -289,20 +281,15 @@ export function SucesosProvider({ children }: { children: ReactNode }) {
                     await refrescarCategorias();
                     return res.categoria;
                 } catch (err: any) {
-                    console.warn('⚠️ Falló crear categoría online, encolando:', err?.message);
-                    // Caer al modo offline
                 }
             }
 
-            // 🔑 Modo offline: crear localmente con ID temporal
-            console.log('📴 Creando categoría offline');
             const pendiente = await sucesosStorage.encolarCategoria({
                 nombre: data.nombre,
                 tipo: data.tipo as 'seguridad_ambiente' | 'condicion_climatica',
                 unidad: data.unidad ?? null,
             });
 
-            // Construir un objeto SucesoCategoria "virtual" con ID negativo
             const categoriaLocal: SucesoCategoria = {
                 id: pendiente.idTemporal,
                 nombre: pendiente.nombre,
@@ -318,7 +305,6 @@ export function SucesosProvider({ children }: { children: ReactNode }) {
                 creado_por: null,
             };
 
-            // Añadir a la lista local para que aparezca en el selector
             setCategorias((prev) => [...prev, categoriaLocal]);
 
             return categoriaLocal;
@@ -327,6 +313,7 @@ export function SucesosProvider({ children }: { children: ReactNode }) {
     );
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         refrescarCategorias();
         refrescarSucesos();
         refrescarPendientes();
@@ -334,9 +321,7 @@ export function SucesosProvider({ children }: { children: ReactNode }) {
         const unsubscribe = NetInfo.addEventListener(async (state) => {
             const isNowOnline = !!state.isConnected && state.isInternetReachable !== false;
 
-            // Solo sincronizar cuando pasa de offline → online
             if (isNowOnline && !wasOnlineRef.current) {
-                console.log('🌐 Conexión recuperada, sincronizando...');
                 await sincronizarPendientes();
             }
 

@@ -16,7 +16,6 @@ export default function TimerOverlay({ countdown }: Props) {
     const opacity = useSharedValue(0);
 
     useEffect(() => {
-        console.log('🎨 TimerOverlay render, countdown =', countdown);
         if (countdown === null) return;
         scale.value = 0.4;
         opacity.value = 0;

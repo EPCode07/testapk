@@ -29,6 +29,7 @@ export default function PhotoDescribeScreen() {
     );
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setDescripcion(foto?.descripcionIndividual ?? '');
     }, [foto?.idLocal]);
 

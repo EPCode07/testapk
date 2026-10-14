@@ -19,8 +19,6 @@ export async function getReportWordUrl(): Promise<void> {
     const url = `${BACKEND_URL}/report-word?usuario=${encodeURIComponent(usuario)}`;
     const destino = `${FileSystem.documentDirectory}reporte_${Date.now()}.docx`;
 
-    console.log('📄 Descargando reporte desde:', url);
-
     // 1. Descargar el archivo real al almacenamiento de la app
     const resultado = await FileSystem.downloadAsync(url, destino, {
         headers: { 'x-api-secret': API_SECRET ?? '' },

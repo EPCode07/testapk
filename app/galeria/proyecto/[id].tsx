@@ -15,10 +15,6 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-import {
-    useSpeechRecognitionEvent,
-} from 'expo-speech-recognition';
 import AppHeader from '../../../components/AppHeader';
 import { EstacionGaleriaItem, galeriaService, ProyectoGaleriaItem } from '../../../lib/galeria/galeriaService';
 
@@ -40,16 +36,7 @@ export default function GaleriaProyectoScreen() {
     const [cargando, setCargando] = useState(true);
     const [refrescando, setRefrescando] = useState(false);
     const [busqueda, setBusqueda] = useState('');
-    const [isListening, setIsListening] = useState(false);
     const [modalProyectosVisible, setModalProyectosVisible] = useState(false);
-
-    useSpeechRecognitionEvent('start', () => setIsListening(true));
-    useSpeechRecognitionEvent('end', () => setIsListening(false));
-    useSpeechRecognitionEvent('error', () => setIsListening(false));
-    useSpeechRecognitionEvent('result', (event) => {
-        const texto = event.results[0]?.transcript;
-        if (texto) setBusqueda(texto);
-    });
 
     const cargarDatos = useCallback(async (id: number) => {
         try {
@@ -61,7 +48,6 @@ export default function GaleriaProyectoScreen() {
             setEstaciones(resultado.estaciones);
             setProyectosDisponibles(listaProyectos);
         } catch (err) {
-            console.log('Error cargando estaciones del proyecto:', err);
         } finally {
             setCargando(false);
             setRefrescando(false);
@@ -70,6 +56,7 @@ export default function GaleriaProyectoScreen() {
 
     useEffect(() => {
         if (proyectoId) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setCargando(true);
             cargarDatos(proyectoId);
         }
@@ -113,7 +100,6 @@ export default function GaleriaProyectoScreen() {
                     }
                     showsVerticalScrollIndicator={false}
                 >
-                    {/* DROPDOWN SELECTOR DE PROYECTO */}
                     <TouchableOpacity
                         style={styles.projectDropdown}
                         activeOpacity={0.8}
@@ -128,7 +114,6 @@ export default function GaleriaProyectoScreen() {
                         <Ionicons name="chevron-down" size={20} color="#374151" />
                     </TouchableOpacity>
 
-                    {/* BUSCADOR */}
                     <View style={styles.searchBar}>
                         <Ionicons name="search-outline" size={20} color="#9CA3AF" />
                         <TextInput
@@ -143,19 +128,8 @@ export default function GaleriaProyectoScreen() {
                                 <Ionicons name="close-circle" size={18} color="#9CA3AF" />
                             </TouchableOpacity>
                         )}
-                        <TouchableOpacity style={styles.searchActionBtn}>
-                            <Ionicons
-                                name="mic-outline"
-                                size={20}
-                                color={isListening ? '#B5121B' : '#6B7280'}
-                            />
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.searchActionBtn}>
-                            <Ionicons name="funnel-outline" size={19} color="#6B7280" />
-                        </TouchableOpacity>
                     </View>
 
-                    {/* CONTENIDO DE ESTACIONES */}
                     {cargando ? (
                         <View style={styles.center}>
                             <ActivityIndicator size="large" color="#B5121B" />
@@ -193,7 +167,6 @@ export default function GaleriaProyectoScreen() {
                                         })
                                     }
                                 >
-                                    {/* Cabecera de la estación con título y flecha */}
                                     <View style={styles.stationHeader}>
                                         <View style={{ flex: 1 }}>
                                             <Text style={styles.stationTitle}>
@@ -211,7 +184,6 @@ export default function GaleriaProyectoScreen() {
                                         />
                                     </View>
 
-                                    {/* Previews de fotos de la estación */}
                                     <View style={styles.previewsRow}>
                                         {estacion.fotosPreview.length > 0 ? (
                                             estacion.fotosPreview.slice(0, 2).map((foto, index) => (
@@ -248,7 +220,6 @@ export default function GaleriaProyectoScreen() {
                     )}
                 </ScrollView>
 
-                {/* MODAL CAMBIAR PROYECTO */}
                 <Modal
                     visible={modalProyectosVisible}
                     transparent
@@ -312,7 +283,6 @@ const styles = StyleSheet.create({
         paddingBottom: 24,
     },
 
-    // DROPDOWN PROYECTO
     projectDropdown: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -348,7 +318,6 @@ const styles = StyleSheet.create({
         flex: 1,
     },
 
-    // BUSCADOR
     searchBar: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -377,12 +346,6 @@ const styles = StyleSheet.create({
     clearBtn: {
         padding: 4,
     },
-    searchActionBtn: {
-        padding: 6,
-        marginLeft: 4,
-    },
-
-    // LISTA DE ESTACIONES
     stationsList: {
         gap: 14,
     },
@@ -460,7 +423,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
     },
 
-    // MODAL
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.45)',

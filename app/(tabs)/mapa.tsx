@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/refs */
 import { Ionicons } from '@expo/vector-icons';
 import * as MapLibreRN from '@maplibre/maplibre-react-native';
 import { router } from 'expo-router';

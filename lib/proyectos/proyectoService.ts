@@ -101,7 +101,6 @@ export const proyectoService = {
             await proyectoCache.guardarLista(json.data);
             return json.data;
         } catch (err) {
-            console.log('⚠️ API listar falló, usando caché:', err);
             const cached = await proyectoCache.leerLista();
 
             if (cached) return cached;
@@ -122,11 +121,6 @@ export const proyectoService = {
             });
             const json = await res.json();
 
-
-            console.log('📦 Detalle recibido:', {
-                tieneSupervisores: json.data?.estaciones?.[0]?.supervisores_externos !== undefined,
-                supervisores: json.data?.estaciones?.[0]?.supervisores_externos
-            });
             if (!res.ok || !json.success) {
                 throw new Error(json.message ?? 'Error cargando el proyecto');
             }
@@ -134,10 +128,7 @@ export const proyectoService = {
             await proyectoCache.guardarDetalle(id, json.data);
             return json.data;
         } catch (err) {
-            console.log(`⚠️ API detalle falló, usando caché del proyecto ${id}:`, err);
             const cached = await proyectoCache.leerDetalle(id);
-            console.log('Desde cache:', (cached as any)?.estaciones[0]?.supervisores_externos);
-
             if (cached) return cached;
             throw err;
         }

@@ -4,7 +4,7 @@ import PhotoStack from './PhotoStack';
 
 type Props = {
     cameraReady: boolean;
-    isCapturing: boolean;   // 👈 nuevo
+    isCapturing: boolean;
     onTakePicture: () => void;
     onFlipCamera: () => void;
     photoCount: number;
@@ -12,7 +12,9 @@ type Props = {
     onPreviewPhoto: () => void;
     onDiscardPhotos: () => void;
     onOpenGallery: () => void;
+    hidePhotoStack?: boolean;
 };
+
 export default function BottomControls({
     cameraReady,
     isCapturing,
@@ -23,6 +25,7 @@ export default function BottomControls({
     onPreviewPhoto,
     onDiscardPhotos,
     onOpenGallery,
+    hidePhotoStack = false,
 }: Props) {
     const shutterDisabled = !cameraReady || isCapturing;
 
@@ -45,13 +48,17 @@ export default function BottomControls({
                 )}
             </TouchableOpacity>
 
-            <PhotoStack
-                count={photoCount}
-                lastUri={lastPhotoUri}
-                onPreview={onPreviewPhoto}
-                onLongPress={onDiscardPhotos}
-                onOpenGallery={onOpenGallery}
-            />
+            {hidePhotoStack ? (
+                <View style={styles.sideButton} />
+            ) : (
+                <PhotoStack
+                    count={photoCount}
+                    lastUri={lastPhotoUri}
+                    onPreview={onPreviewPhoto}
+                    onLongPress={onDiscardPhotos}
+                    onOpenGallery={onOpenGallery}
+                />
+            )}
         </View>
     );
 }
