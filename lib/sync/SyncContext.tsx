@@ -146,7 +146,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const syncExportacionesNow = useCallback(
     async (force: boolean = false) => {
       if (syncingExpRef.current) return;
-      syncingExpRef.current = true; // candado síncrono
+      syncingExpRef.current = true;
       let started = false;
 
       try {
@@ -173,7 +173,6 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
               continue;
             }
 
-            // Dedupe por id + reintento ante deadlock (el helper que te pasé antes)
             const resultado = await exportarUnaVez(
               item.estacionServicioActividadId,
               () => exportarActividadAlServidor(actividad)
@@ -208,7 +207,6 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     },
     [refreshExportaciones, canSyncWithNetwork, beginSync, endSync]
   );
-  // ============ ADD TO QUEUES ============
 
   const addPhotoToQueue = useCallback(
     async (
@@ -254,10 +252,10 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     [refreshExportaciones, syncExportacionesNow]
   );
 
-  // ============ LISTENER DE RED + CARGA INICIAL ============
 
   useEffect(() => {
     requestNotificationPermissions();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshQueue();
     refreshExportaciones();
 

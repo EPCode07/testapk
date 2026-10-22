@@ -31,7 +31,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsOfflineSession(await authService.isOfflineSession());
     }, []);
 
-    // Auto-carga al arrancar
     useEffect(() => {
         let mounted = true;
 
@@ -47,6 +46,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     setUser(fresh);
                     await syncOfflineFlag();
                 } else {
+                    setUser(null);
+                    setIsOfflineSession(false);
+                }
+            } catch (err: any) {
+                const msg = String(err?.message ?? '');
+                const esSinSesion =
+                    msg.includes('Sin sesión') ||
+                    msg.includes('Unauthorized') ||
+                    err?.status === 401;
+
+                if (mounted && esSinSesion) {
                     setUser(null);
                     setIsOfflineSession(false);
                 }

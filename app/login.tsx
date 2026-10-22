@@ -68,7 +68,6 @@ export default function LoginScreen() {
         })();
     }, []);
 
-    // ============ LOGIN NORMAL ============
     const handleLogin = async () => {
         if (!email.trim() || !password) {
             setAlert({
@@ -81,7 +80,7 @@ export default function LoginScreen() {
 
         try {
             setLoading(true);
-            const user = await login(email, password);   // 👈 usa AuthContext
+            const user = await login(email, password);
             await setUsuario(user.name);
             if (biometricAvailable && !biometricEnabled) {
                 setTimeout(() => askEnableBiometric(user), 400);
@@ -117,7 +116,7 @@ export default function LoginScreen() {
 
         try {
             setLoading(true);
-            const user = await login(email, password);   // 👈 usa AuthContext
+            const user = await login(email, password);
             await setUsuario(user.name);
             showMessage({
                 message: `Bienvenido, ${user.name}`,
@@ -136,7 +135,6 @@ export default function LoginScreen() {
         }
     };
 
-    // ============ LOGIN BIOMÉTRICO ============
     const handleBiometricLogin = async () => {
         if (!biometricEnabled) {
             setAlert({
@@ -178,7 +176,6 @@ export default function LoginScreen() {
         }
     };
 
-    // ============ ACTIVAR BIOMETRÍA ============
     const askEnableBiometric = (user: AuthUser) => {
         Alert.alert(
             `Activar ${biometricType}`,
@@ -206,7 +203,6 @@ export default function LoginScreen() {
         );
     };
 
-    // ============ CAMBIAR DE USUARIO ============
     const handleChangeUser = () => {
         setPassword('');
         setSavedUser(null);
@@ -257,7 +253,6 @@ export default function LoginScreen() {
                         keyboardShouldPersistTaps="handled"
                         keyboardDismissMode="on-drag"
                     >
-                        {/* Header: icono + REPORTES */}
                         <View style={styles.topBrand}>
                             <View style={styles.logoBox}>
                                 <Image
@@ -269,7 +264,6 @@ export default function LoginScreen() {
                             <Text style={styles.topBrandText}>REPORTES</Text>
                         </View>
 
-                        {/* Card semitransparente */}
                         <BlurView intensity={70} tint="dark" style={styles.card}>
                             <View style={styles.cardContent}>
                                 <Image
@@ -278,7 +272,6 @@ export default function LoginScreen() {
                                     resizeMode="contain"
                                 />
 
-                                {/* ========== MODO WELCOME-BACK ========== */}
                                 {mode === 'welcome-back' && savedUser && (
                                     <>
                                         <Text style={styles.title}>Bienvenido</Text>
@@ -357,7 +350,6 @@ export default function LoginScreen() {
                                     </>
                                 )}
 
-                                {/* ========== MODO FULL-LOGIN ========== */}
                                 {mode === 'full-login' && (
                                     <>
                                         <Text style={styles.title}>Iniciar Sesión</Text>

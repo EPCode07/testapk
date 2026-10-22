@@ -14,15 +14,16 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppHeader from '../../../components/AppHeader';
 import { EstacionGaleriaItem, galeriaService, ProyectoGaleriaItem } from '../../../lib/galeria/galeriaService';
 
 const FOTO_DEFAULT =
-    'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800';
+    'https://yhoma.pe/wp-content/uploads/2026/09/FOTO-ACERCA-DE-NOSOTROS-copy.png';
 
 export default function GaleriaProyectoScreen() {
     const router = useRouter();
+    const insets = useSafeAreaInsets();
     const params = useLocalSearchParams<{ id: string; nombre?: string }>();
     const proyectoId = params.id ? Number(params.id) : null;
 
@@ -83,7 +84,7 @@ export default function GaleriaProyectoScreen() {
     });
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
+        <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom || 10 }]} edges={['top']}>
             <View style={styles.mainWrapper}>
                 <StatusBar barStyle="dark-content" backgroundColor="#ECEDEF" />
                 <AppHeader variant="main" />

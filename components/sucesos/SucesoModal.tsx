@@ -62,7 +62,6 @@ export default function SucesoModal({
 
     const esModoContexto = !!contextoActividad;
 
-    // Reset al abrir
     useEffect(() => {
         if (!visible) return;
 
@@ -105,8 +104,8 @@ export default function SucesoModal({
     const handleGuardar = async () => {
         if (!esModoContexto && !contexto) {
             Alert.alert(
-                'Falta actividad',
-                'Debés elegir proyecto, estación y actividad antes de guardar.'
+                'Falta tarea',
+                'Debés elegir proyecto, estación y tarea antes de guardar.'
             );
             return;
         }
@@ -118,7 +117,7 @@ export default function SucesoModal({
 
         const actividadId = contexto?.estacionServicioActividadId;
         if (!actividadId) {
-            Alert.alert('Error', 'No se pudo determinar la actividad.');
+            Alert.alert('Error', 'No se pudo determinar la tarea.');
             return;
         }
 
@@ -131,7 +130,7 @@ export default function SucesoModal({
                     valor: valor ? Number(valor) : undefined,
                 });
                 if (!onGuardado) {
-                    Alert.alert('✅ Actualizado', 'El suceso se guardó correctamente.');
+                    Alert.alert('Actualizado', 'El suceso se guardó correctamente.');
                 }
             } else {
                 // GPS
@@ -165,11 +164,11 @@ export default function SucesoModal({
                 if (!onGuardado) {
                     if (res.offline) {
                         Alert.alert(
-                            '⏳ Guardado local',
+                            'Guardado local',
                             'El suceso se guardó localmente. Se enviará al servidor cuando haya conexión.'
                         );
                     } else {
-                        Alert.alert('✅ Guardado', 'El suceso se registró correctamente.');
+                        Alert.alert('Guardado', 'El suceso se registró correctamente.');
                     }
                 }
             }
@@ -218,7 +217,6 @@ export default function SucesoModal({
                         keyboardDismissMode="interactive"
                         automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
                     >
-                        {/* ====== MODO CONTEXTO: readonly ====== */}
                         {esModoContexto && contextoActividad ? (
                             <>
                                 <Text style={styles.label}>Ubicación</Text>
@@ -245,7 +243,6 @@ export default function SucesoModal({
                                 </View>
                             </>
                         ) : sucesoEditando ? null : (
-                            /* ====== MODO TAB: 3 selectores encadenados ====== */
                             <>
                                 <Text style={styles.label}>Proyecto *</Text>
                                 <TouchableOpacity
@@ -288,7 +285,7 @@ export default function SucesoModal({
                                     <Ionicons name="chevron-down" size={18} color="#6B7280" />
                                 </TouchableOpacity>
 
-                                <Text style={styles.label}>Actividad *</Text>
+                                <Text style={styles.label}>Tarea *</Text>
                                 <TouchableOpacity
                                     style={[
                                         styles.selectBtn,
@@ -307,7 +304,7 @@ export default function SucesoModal({
                                         </Text>
                                     ) : (
                                         <Text style={styles.selectBtnText}>
-                                            Seleccionar actividad
+                                            Seleccionar tarea
                                         </Text>
                                     )}
                                     <Ionicons name="chevron-down" size={18} color="#6B7280" />

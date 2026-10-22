@@ -20,7 +20,7 @@ import AppHeader from '../../components/AppHeader';
 import { galeriaService, ProyectoGaleriaItem } from '../../lib/galeria/galeriaService';
 
 const FOTO_DEFAULT =
-    'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800';
+    'https://yhoma.pe/wp-content/uploads/2026/09/FOTO-ACERCA-DE-NOSOTROS-copy.png';
 
 const { width } = Dimensions.get('window');
 const CARD_GAP = 12;
@@ -83,7 +83,6 @@ export default function GaleriaScreen() {
                     }
                     showsVerticalScrollIndicator={false}
                 >
-                    {/* BUSCADOR */}
                     <View style={styles.searchBar}>
                         <Ionicons name="search-outline" size={20} color="#9CA3AF" />
                         <TextInput
@@ -131,7 +130,6 @@ export default function GaleriaScreen() {
                                         })
                                     }
                                 >
-                                    {/* Cabecera de la tarjeta con punto rojo */}
                                     <View style={styles.cardHeader}>
                                         <View style={styles.redDot} />
                                         <Text style={styles.cardTitle} numberOfLines={1}>
@@ -139,13 +137,11 @@ export default function GaleriaScreen() {
                                         </Text>
                                     </View>
 
-                                    {/* Subtítulo: total fotos y tiempo relativo */}
                                     <Text style={styles.cardSubtitle}>
                                         {item.totalFotos} {item.totalFotos === 1 ? 'foto' : 'fotos'}
                                         {item.totalFotos > 0 ? ` | ${item.tiempoRelativo}` : ''}
                                     </Text>
 
-                                    {/* Imagen de portada */}
                                     <View style={styles.imageContainer}>
                                         <Image
                                             source={{ uri: item.ultimaFotoUri || FOTO_DEFAULT }}

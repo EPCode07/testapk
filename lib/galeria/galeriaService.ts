@@ -13,9 +13,6 @@ export interface FotoGaleria extends FotoCaptura {
     estacionId: number;
     actividadNombre: string;
     creadoEn: number;
-
-
-    // 🔑 nuevos (solo presentes cuando vienen del backend)
     userId?: number;
     esMia?: boolean;
     autorNombre?: string;
@@ -73,16 +70,34 @@ async function apiGet<T>(path: string): Promise<T> {
 
 function formatTiempoRelativo(timestampMs: number | null): string {
     if (!timestampMs) return 'Sin fotos';
+
+    const ts = Number(timestampMs);
     const ahora = Date.now();
-    const diffMin = Math.floor((ahora - timestampMs) / (1000 * 60));
-    if (diffMin < 1) return 'Ahora';
+
+    const diffMs = Math.max(0, ahora - ts);
+    const diffMin = Math.floor(diffMs / (1000 * 60));
+
+    if (diffMin < 1) return 'Ahora mismo';
     if (diffMin < 60) return `Hace ${diffMin} min`;
+
     const diffHoras = Math.floor(diffMin / 60);
     if (diffHoras < 24) return `Hace ${diffHoras} h`;
+
     const diffDias = Math.floor(diffHoras / 24);
     if (diffDias === 1) return 'Ayer';
-    if (diffDias < 7) return `Hace ${diffDias} d`;
-    return `Hace ${Math.floor(diffDias / 7)} sem`;
+    if (diffDias < 7) return `Hace ${diffDias} días`;
+
+    const diffSemanas = Math.floor(diffDias / 7);
+    if (diffSemanas === 1) return 'Hace 1 sem';
+    if (diffSemanas < 4) return `Hace ${diffSemanas} sem`;
+
+    const diffMeses = Math.floor(diffDias / 30);
+    if (diffMeses === 1) return 'Hace 1 mes';
+    if (diffMeses < 12) return `Hace ${diffMeses} meses`;
+
+    const diffAnios = Math.floor(diffDias / 365);
+    if (diffAnios === 1) return 'Hace 1 año';
+    return `Hace ${diffAnios} años`;
 }
 
 function formatearClaveFecha(fechaStr: string | number): { clave: string; titulo: string } {
@@ -160,7 +175,6 @@ export const galeriaService = {
             codigo: e.codigo,
             nombre: e.nombre,
             totalFotos: e.total_fotos ?? 0,
-            // El backend devuelve solo URLs; las envolvemos en FotoGaleria mínimo
             fotosPreview: (e.previews ?? []).map((url: string, i: number) => ({
                 idLocal: `remote-${e.id}-${i}`,
                 uriLocal: url,
@@ -193,12 +207,11 @@ export const galeriaService = {
                 latitud: f.latitud ?? undefined,
                 longitud: f.longitud ?? undefined,
                 timestamp: f.fecha_captura ?? new Date().toISOString(),
-                proyectoId: 0, // el endpoint no lo devuelve
+                proyectoId: 0,
                 estacionId,
-                actividadNombre: '', // el endpoint no lo devuelve
+                actividadNombre: '',
                 creadoEn: new Date(f.fecha_captura ?? Date.now()).getTime(),
                 subidaAlServidor: true,
-                // 🔑 nuevos (solo presentes cuando vienen del backend)
                 userId: f.user_id,
                 esMia: !!f.es_mia,
                 autorNombre: f.autor_nombre,

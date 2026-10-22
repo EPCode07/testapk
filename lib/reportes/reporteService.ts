@@ -28,12 +28,12 @@ export type ResumenDia = {
     total_fotos: number;
     total_actividades: number;
     total_sucesos: number;
-    actividades: Array<{
+    actividades: {
         actividad_id: number;
         actividad_nombre: string;
         total_fotos: number;
         conforme: boolean;
-    }>;
+    }[];
 };
 
 export const reporteService = {
@@ -113,7 +113,6 @@ export const reporteService = {
     async descargarPdf(reporteId: number, codigo?: string, fecha?: string): Promise<string> {
         const token = await getToken();
 
-        // 🔑 Nombre: "RD-26-0005 - 2026-09-28.pdf"
         const partes = [
             codigo ?? `RD-${reporteId}`,
             fecha ?? new Date().toISOString().slice(0, 10),
@@ -166,7 +165,7 @@ export const reporteService = {
         observaciones?: string;
         dias_con_accidentes?: boolean;
         dias_con_lluvia?: boolean;
-        reporte_id?: number;   // 👈 nuevo
+        reporte_id?: number;
     }): Promise<{ reporte: any; fotos_agregadas?: number; es_duplicado?: boolean }> {
         const token = await getToken();
         const res = await fetch(`${BASE_URL}/api/reportes/cerrar-dia`, {

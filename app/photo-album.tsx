@@ -279,7 +279,7 @@ export default function PhotoAlbumScreen() {
         setEsperandoConfirmacionSuceso(false);
 
         Alert.alert(
-            '✅ Suceso guardado',
+            'Suceso guardado',
             'El suceso diario se guardó correctamente.',
             [{ text: 'OK', onPress: irAProyectoDetalle }]
         );
@@ -358,9 +358,8 @@ export default function PhotoAlbumScreen() {
             await marcarFotosSubidas(fotosNuevas.map((f) => f.idLocal));
             await marcarExportada();
 
-            // 👇 Alerta con 2 opciones: Salir directo o ir a Sucesos diarios
             Alert.alert(
-                '✅ Guardado con éxito',
+                'Guardado con éxito',
                 `${fotosNuevas.length} foto(s) subidas al servidor correctamente.\n\n¿Quieres agregar sucesos diarios?`,
                 [
                     {
@@ -378,7 +377,7 @@ export default function PhotoAlbumScreen() {
                 ]
             );
         } catch (e) {
-            console.error('❌ Error exportando:', e);
+            console.error('Error exportando:', e);
             Alert.alert('Error', 'No se pudo exportar la actividad.');
         } finally {
             setExportando(false);
@@ -633,7 +632,6 @@ const styles = StyleSheet.create({
     scroll: { flex: 1 },
     scrollContent: { padding: 16, paddingBottom: 24 },
 
-    // Grid de fotos
     grid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
@@ -677,7 +675,6 @@ const styles = StyleSheet.create({
         marginTop: 8,
     },
 
-    // Input editable
     descripcionInput: {
         backgroundColor: '#F9FAFB',
         borderWidth: 1,
@@ -691,7 +688,6 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
 
-    // Modo readonly
     readonlyBox: {
         backgroundColor: '#F9FAFB',
         borderWidth: 1,
@@ -754,7 +750,6 @@ const styles = StyleSheet.create({
         fontSize: 13,
     },
 
-    // Conforme / Observado
     decisionRow: {
         flexDirection: 'row',
         gap: 12,
@@ -784,7 +779,6 @@ const styles = StyleSheet.create({
     },
     decisionTextActive: { color: '#FFFFFF' },
 
-    // Footer exportar
     footer: {
         padding: 16,
         borderTopWidth: 1,
@@ -807,7 +801,6 @@ const styles = StyleSheet.create({
         fontSize: 15,
     },
 
-    // Empty state
     emptyWrapper: {
         flex: 1,
         justifyContent: 'center',

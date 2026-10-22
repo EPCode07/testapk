@@ -70,14 +70,12 @@ export function ActividadProvider({ children }: { children: ReactNode }) {
     const [actividadEnCurso, setActividadEnCurso] = useState<ActividadEnCurso | null>(null);
     const [cargandoActividad, setCargandoActividad] = useState(false);
 
-    // 🔑 Refs para evitar closures obsoletos
     const actividadEnCursoRef = useRef<ActividadEnCurso | null>(null);
     const proyectoIdRef = useRef<number | null>(null);
     const estacionIdRef = useRef<number | null>(null);
     const actividadesRef = useRef<ActividadResumen[]>([]);
 
     useEffect(() => {
-        // 🔑 Limpieza de duplicados al arrancar
         actividadStorage.limpiarDuplicados().then((eliminados) => {
             if (eliminados > 0) {
             }
@@ -86,7 +84,6 @@ export function ActividadProvider({ children }: { children: ReactNode }) {
 
 
 
-    // Sincronizar refs con state
     useEffect(() => {
         actividadEnCursoRef.current = actividadEnCurso;
     }, [actividadEnCurso]);
@@ -103,7 +100,6 @@ export function ActividadProvider({ children }: { children: ReactNode }) {
         actividadesRef.current = actividades;
     }, [actividades]);
 
-    // Helper para actualizar ambos (state + ref) sincrónicamente
     const setActividadEnCursoSync = useCallback((nueva: ActividadEnCurso | null) => {
         actividadEnCursoRef.current = nueva;
         setActividadEnCurso(nueva);
@@ -192,7 +188,6 @@ export function ActividadProvider({ children }: { children: ReactNode }) {
 
     const agregarFotoActividad = useCallback(
         async (foto: Omit<FotoCaptura, 'idLocal'>) => {
-            // 🔑 Leer del ref, no del closure
             const actual = actividadEnCursoRef.current;
             if (!actual) return;
 
@@ -247,7 +242,6 @@ export function ActividadProvider({ children }: { children: ReactNode }) {
 
             await actividadStorage.marcarFotosSubidas(actual.idLocal, idsFotos);
 
-            // Actualizar state + ref
             const updated = {
                 ...actual,
                 fotos: actual.fotos.map((f) =>
@@ -327,7 +321,6 @@ export function ActividadProvider({ children }: { children: ReactNode }) {
                 });
             }
 
-            // Copiar fotos al borrador destino
             for (const foto of fotosOrigen) {
                 await actividadStorage.agregarFoto(borradorDestino.idLocal, {
                     uriLocal: foto.uriLocal,
@@ -343,10 +336,8 @@ export function ActividadProvider({ children }: { children: ReactNode }) {
                 });
             }
 
-            // Eliminar el borrador origen
             await actividadStorage.eliminar(borradorOrigenLocalId);
 
-            // Actualizar state + ref
             const borradorDestinoActualizado =
                 await actividadStorage.obtenerPorActividadId(nuevaActividadId);
 

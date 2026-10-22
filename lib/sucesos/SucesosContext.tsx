@@ -10,11 +10,10 @@ import {
     useState,
 } from 'react';
 import { SeleccionContexto } from '../../components/sucesos/ProyectoEstacionActividadSelector';
+import { useAuth } from '../user/AuthContext';
 import { sucesoService } from './sucesoService';
 import { sucesosStorage } from './sucesoStorage';
 import { Suceso, SucesoCategoria, SucesoPendiente } from './types';
-
-
 
 const ULTIMO_CONTEXTO_KEY = '@sucesos_ultimo_contexto';
 
@@ -64,7 +63,7 @@ export function SucesosProvider({ children }: { children: ReactNode }) {
     const syncingPendientesRef = useRef(false);
     const wasOnlineRef = useRef(true);
     const [ultimoContexto, setUltimoContextoState] = useState<SeleccionContexto | null>(null);
-
+    const { user } = useAuth();
 
     const refrescarCategorias = useCallback(async () => {
         try {
@@ -94,6 +93,7 @@ export function SucesosProvider({ children }: { children: ReactNode }) {
 
 
     const sincronizarPendientes = useCallback(async () => {
+        if (!user) return;
         if (syncingPendientesRef.current) return;
         syncingPendientesRef.current = true;
 
@@ -171,7 +171,7 @@ export function SucesosProvider({ children }: { children: ReactNode }) {
         } finally {
             syncingPendientesRef.current = false;
         }
-    }, [refrescarCategorias, refrescarPendientes, refrescarSucesos]);
+    }, [refrescarCategorias, refrescarPendientes, refrescarSucesos, user]);
 
 
 
@@ -188,11 +188,9 @@ export function SucesosProvider({ children }: { children: ReactNode }) {
         }): Promise<{ success: boolean; offline: boolean; suceso?: Suceso }> => {
             const fechaHora = new Date().toISOString();
 
-            // 🔑 PASO 1: Verificar red ANTES de intentar fetch
             const net = await NetInfo.fetch();
             const isOnline = !!net.isConnected && net.isInternetReachable !== false;
 
-            // Si no hay red, encolar directamente sin intentar fetch
             if (!isOnline) {
                 const cat = data.categoriaSnapshot;
                 await sucesosStorage.encolar({
@@ -214,7 +212,6 @@ export function SucesosProvider({ children }: { children: ReactNode }) {
                 return { success: true, offline: true };
             }
 
-            // 🔑 PASO 2: Hay red, intentar enviar
             try {
                 const creado = await sucesoService.crear({
                     categoria_id: data.categoria_id,
@@ -228,8 +225,7 @@ export function SucesosProvider({ children }: { children: ReactNode }) {
                 await refrescarSucesos();
                 return { success: true, offline: false, suceso: creado };
             } catch (err: any) {
-                // Falló a pesar de tener red → encolar como fallback
-                console.warn('⚠️ Falló la subida, encolando localmente:', err?.message);
+                console.warn('Falló la subida, encolando localmente:', err?.message);
                 const cat = data.categoriaSnapshot;
                 await sucesosStorage.encolar({
                     categoria_id: data.categoria_id,
@@ -271,7 +267,6 @@ export function SucesosProvider({ children }: { children: ReactNode }) {
 
     const crearCategoria = useCallback(
         async (data: { nombre: string; tipo: string; unidad?: string }): Promise<SucesoCategoria> => {
-            // 🔑 Verificar red ANTES del fetch
             const net = await NetInfo.fetch();
             const isOnline = !!net.isConnected && net.isInternetReachable !== false;
 
@@ -312,24 +307,31 @@ export function SucesosProvider({ children }: { children: ReactNode }) {
         [refrescarCategorias]
     );
 
+
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        refrescarPendientes();
+    }, [refrescarPendientes]);
+
+
+    useEffect(() => {
+        if (!user) return;
         // eslint-disable-next-line react-hooks/set-state-in-effect
         refrescarCategorias();
         refrescarSucesos();
-        refrescarPendientes();
+    }, [user, refrescarCategorias, refrescarSucesos]);
 
+
+    useEffect(() => {
         const unsubscribe = NetInfo.addEventListener(async (state) => {
             const isNowOnline = !!state.isConnected && state.isInternetReachable !== false;
-
             if (isNowOnline && !wasOnlineRef.current) {
                 await sincronizarPendientes();
             }
-
             wasOnlineRef.current = isNowOnline;
         });
-
         return () => unsubscribe();
-    }, [refrescarCategorias, refrescarSucesos, refrescarPendientes, sincronizarPendientes]);
+    }, [sincronizarPendientes]);
 
     useEffect(() => {
         AsyncStorage.getItem(ULTIMO_CONTEXTO_KEY).then((raw) => {

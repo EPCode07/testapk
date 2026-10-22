@@ -116,7 +116,7 @@ export default function ProyectoEstacionActividadSelector({
     const titulo = {
         proyecto: 'Seleccionar proyecto',
         estacion: 'Seleccionar estación',
-        actividad: 'Seleccionar actividad',
+        actividad: 'Seleccionar tarea',
     }[nivel];
 
     return (

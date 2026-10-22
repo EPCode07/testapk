@@ -92,10 +92,6 @@ export default function MisReportesScreen() {
         useCallback(() => {
             const ahora = Date.now();
             const msDesdeUltima = ahora - ultimaCargaRef.current;
-
-            // 🔑 Recargar solo si:
-            // - Es la primera vez (siempre carga)
-            // - O pasaron más de 60 segundos desde la última carga
             if (primeraCargaRef.current || msDesdeUltima > 60_000) {
                 cargar();
                 primeraCargaRef.current = false;
@@ -120,7 +116,6 @@ export default function MisReportesScreen() {
                     <View style={styles.center}>
                         <Ionicons name="alert-circle-outline" size={48} color="#B91C1C" />
                         <Text style={styles.errorTitle}>Error al cargar</Text>
-                        <Text style={styles.errorText}>{error}</Text>
                         <TouchableOpacity style={styles.retryBtn} onPress={cargar}>
                             <Ionicons name="refresh" size={16} color="#FFFFFF" />
                             <Text style={styles.retryBtnText}>Reintentar</Text>

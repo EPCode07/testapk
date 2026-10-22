@@ -165,7 +165,7 @@ export default function GaleriaEstacionScreen() {
         .filter((grupo) => grupo.fotos.length > 0);
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
+        <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom || 10 }]} edges={['top']}>
             <View style={styles.mainWrapper}>
                 <StatusBar barStyle="dark-content" backgroundColor="#ECEDEF" />
                 <AppHeader variant="main" />

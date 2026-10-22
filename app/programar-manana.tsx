@@ -11,7 +11,7 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppHeader from '../components/AppHeader';
@@ -37,9 +37,8 @@ export default function ProgramarMananaScreen() {
     const [fechaManana, setFechaManana] = useState<string>('');
     const [cargando, setCargando] = useState(true);
     const [guardando, setGuardando] = useState(false);
-    const [servicios, setServicios] = useState<Array<{ id: number; nombre: string }>>([]);
+    const [servicios, setServicios] = useState<{ id: number; nombre: string }[]>([]);
 
-    // Modal crear
     const [modalCrearAbierto, setModalCrearAbierto] = useState(false);
     const [nuevoNombre, setNuevoNombre] = useState('');
     const [nuevoTipo, setNuevoTipo] = useState('tarea');
@@ -57,7 +56,6 @@ export default function ProgramarMananaScreen() {
                 setActividades(data);
                 setFechaManana(manana);
 
-                // 🔑 Preseleccionar las que ya estaban programadas para mañana
                 const set = new Set<number>();
                 data.forEach((a) => {
                     if (a.programada_para_manana) set.add(a.id);
@@ -74,7 +72,6 @@ export default function ProgramarMananaScreen() {
                 .listarServicios(estacionId)
                 .then((data) => {
                     setServicios(data);
-                    // 🔑 Auto-seleccionar si solo hay 1
                     if (data.length === 1) {
                         setServicioSeleccionadoId(data[0].id);
                     }
@@ -107,8 +104,8 @@ export default function ProgramarMananaScreen() {
             );
 
             Alert.alert(
-                '✅ Programación guardada',
-                `${seleccionadas.size} actividad(es) programada(s) para mañana.`,
+                'Programación guardada',
+                `${seleccionadas.size} tarea(s) programada(s) para mañana.`,
                 [
                     {
                         text: 'OK',
@@ -124,16 +121,15 @@ export default function ProgramarMananaScreen() {
     };
 
     const handleCrearActividad = async () => {
-        // Validaciones
         if (!nuevoNombre.trim()) {
-            Alert.alert('Falta nombre', 'Escribí un nombre para la actividad.');
+            Alert.alert('Falta nombre', 'Escribí un nombre para la tarea.');
             return;
         }
 
         if (!servicioSeleccionadoId) {
             Alert.alert(
-                'Falta servicio',
-                'Seleccioná a qué servicio pertenece la actividad.'
+                'Falta actividad',
+                'Seleccioná a qué actividad pertenece la tarea.'
             );
             return;
         }
@@ -145,25 +141,22 @@ export default function ProgramarMananaScreen() {
                 tipo: nuevoTipo,
                 descripcion: nuevoDescripcion.trim() || undefined,
                 estacion_servicio_id: servicioSeleccionadoId,
-                programada_para: fechaManana,   // 🔑 Se programa automáticamente para mañana
+                programada_para: fechaManana,
             });
 
-            // 🔑 Añadir a la lista local
             setActividades((prev) => [...prev, nueva]);
 
-            // 🔑 Marcarla como seleccionada automáticamente
             setSeleccionadas((prev) => new Set(prev).add(nueva.id));
 
-            // Cerrar modal y limpiar
             setModalCrearAbierto(false);
             setNuevoNombre('');
             setNuevoTipo('tarea');
             setNuevoDescripcion('');
             setServicioSeleccionadoId(null);
 
-            Alert.alert('✅ Actividad creada', 'Se agregó a la lista para mañana.');
+            Alert.alert('Tarea creada', 'Se agregó a la lista para mañana.');
         } catch (err: any) {
-            Alert.alert('Error', err?.message ?? 'No se pudo crear la actividad');
+            Alert.alert('Error', err?.message ?? 'No se pudo crear la tarea');
         } finally {
             setCreando(false);
         }
@@ -200,7 +193,7 @@ export default function ProgramarMananaScreen() {
                             ¿Qué vas a hacer mañana?
                         </Text>
                         <Text style={styles.infoText}>
-                            Seleccioná las actividades pendientes o creá nuevas.
+                            Seleccioná las tareas pendientes o creá nuevas.
                         </Text>
                     </View>
                 </View>
@@ -212,14 +205,14 @@ export default function ProgramarMananaScreen() {
                 ) : actividades.length === 0 ? (
                     <View style={styles.emptyBox}>
                         <Ionicons name="checkmark-done-circle" size={48} color="#9CA3AF" />
-                        <Text style={styles.emptyTitle}>Sin actividades pendientes</Text>
+                        <Text style={styles.emptyTitle}>Sin tareas pendientes</Text>
                         <Text style={styles.emptyText}>
-                            Todas las actividades están completadas. Podés crear una nueva.
+                            Todas las tareas están completadas. Podés crear una nueva.
                         </Text>
                     </View>
                 ) : (
                     <>
-                        <Text style={styles.sectionTitle}>Actividades pendientes</Text>
+                        <Text style={styles.sectionTitle}>Tareas pendientes</Text>
 
                         {actividades.map((act) => {
                             const marcada = seleccionadas.has(act.id);
@@ -275,14 +268,13 @@ export default function ProgramarMananaScreen() {
                     </>
                 )}
 
-                {/* Botón crear nueva */}
                 <TouchableOpacity
                     style={styles.crearBtn}
                     onPress={() => setModalCrearAbierto(true)}
                     activeOpacity={0.7}
                 >
                     <Ionicons name="add-circle-outline" size={20} color="#B5121B" />
-                    <Text style={styles.crearBtnText}>Crear nueva actividad</Text>
+                    <Text style={styles.crearBtnText}>Crear nueva tarea</Text>
                 </TouchableOpacity>
             </ScrollView>
 
@@ -321,7 +313,7 @@ export default function ProgramarMananaScreen() {
                 <View style={styles.modalBackdrop}>
                     <View style={[styles.modalCard, { paddingBottom: insets.bottom + 20 }]}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Nueva actividad</Text>
+                            <Text style={styles.modalTitle}>Nueva tarea</Text>
                             <TouchableOpacity
                                 onPress={() => setModalCrearAbierto(false)}
                             >
@@ -330,13 +322,21 @@ export default function ProgramarMananaScreen() {
                         </View>
 
                         <ScrollView>
-                            <Text style={styles.inputLabel}>Nombre *</Text>
+                            <Text style={styles.inputLabel}>Tarea *</Text>
                             <TextInput
                                 style={styles.input}
                                 placeholder="Ej: Reparación de válvula"
                                 placeholderTextColor="#9CA3AF"
                                 value={nuevoNombre}
                                 onChangeText={setNuevoNombre}
+
+                                // La magia para evitar el bug de los acentos
+                                // keyboardType={Platform.OS === 'android' ? 'visible-password' : 'default'}
+                                autoCorrect={false}
+                                spellCheck={false}
+
+                                // Mantén esto si quieres que inicie con mayúscula (recomendado para nombres)
+                                autoCapitalize="words"
                             />
 
                             <Text style={styles.inputLabel}>Tipo</Text>
@@ -375,12 +375,12 @@ export default function ProgramarMananaScreen() {
                                 multiline
                             />
 
-                            <Text style={styles.inputLabel}>Servicio *</Text>
+                            <Text style={styles.inputLabel}>Actividad *</Text>
                             {servicios.length === 0 ? (
                                 <View style={styles.noServicios}>
                                     <Ionicons name="alert-circle-outline" size={18} color="#B45309" />
                                     <Text style={styles.noServiciosText}>
-                                        Esta estación no tiene servicios configurados.
+                                        Esta estación no tiene actividades configurados.
                                     </Text>
                                 </View>
                             ) : (

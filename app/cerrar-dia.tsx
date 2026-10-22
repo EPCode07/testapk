@@ -52,12 +52,10 @@ export default function CerrarDiaScreen() {
     const [diasConAccidentes, setDiasConAccidentes] = useState(false);
     const [diasConLluvia, setDiasConLluvia] = useState(false);
 
-    // ============================================================
-    // Cargar estaciones del proyecto
-    // ============================================================
     useEffect(() => {
         if (!proyectoId) return;
 
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setCargandoEstaciones(true);
         proyectoService
             .detalle(proyectoId)
@@ -69,7 +67,6 @@ export default function CerrarDiaScreen() {
                 }));
                 setEstaciones(lista);
 
-                // 🔑 Si no hay estación seleccionada y solo hay 1, elegirla automáticamente
                 if (!estacionSeleccionadaId && lista.length === 1) {
                     setEstacionSeleccionadaId(lista[0].id);
                 }
@@ -80,11 +77,9 @@ export default function CerrarDiaScreen() {
             .finally(() => setCargandoEstaciones(false));
     }, [proyectoId]);
 
-    // ============================================================
-    // Cargar resumen del día cuando hay estación seleccionada
-    // ============================================================
     useEffect(() => {
         if (!estacionSeleccionadaId) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setResumen(null);
             return;
         }
@@ -312,7 +307,6 @@ export default function CerrarDiaScreen() {
                     contentContainerStyle={styles.scrollContent}
                     keyboardShouldPersistTaps="handled"
                 >
-                    {/* Estación actual */}
                     <View style={styles.stationCard}>
                         <View style={styles.stationIcon}>
                             <Ionicons name="location" size={22} color="#FFFFFF" />
@@ -351,7 +345,6 @@ export default function CerrarDiaScreen() {
 
 
                         <>
-                            {/* 👇 AQUÍ VA EL WARNING */}
                             {resumen.total_fotos === 0 && (resumen.total_sucesos ?? 0) > 0 && (
                                 <View style={styles.warningBox}>
                                     <Ionicons name="warning" size={20} color="#B45309" />
@@ -361,7 +354,6 @@ export default function CerrarDiaScreen() {
                                 </View>
                             )}
 
-                            {/* Resumen */}
                             <Text style={styles.sectionTitle}>Resumen del día</Text>
 
                             <View style={styles.statsRow}>
@@ -374,7 +366,7 @@ export default function CerrarDiaScreen() {
                                 <StatCard
                                     icon="list"
                                     value={resumen.total_actividades}
-                                    label="Actividades"
+                                    label="Tareas"
                                     color="#2563EB"
                                 />
                                 <StatCard
@@ -385,8 +377,7 @@ export default function CerrarDiaScreen() {
                                 />
                             </View>
 
-                            {/* Lista de actividades */}
-                            <Text style={styles.sectionTitle}>Actividades del día</Text>
+                            <Text style={styles.sectionTitle}>Tareas realizadas hoy</Text>
 
                             {resumen.actividades.map((act) => (
                                 <View key={act.actividad_id} style={styles.actRow}>

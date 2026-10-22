@@ -197,21 +197,18 @@ export default function ProyectoDetalleScreen() {
                                         estacion={est}
                                         onActividadPress={(actividadId, actividadNombre, estado) => {
                                             if (estado === 'completado') {
-                                                // Abrir modal de confirmación
                                                 setActividadPendiente({
                                                     id: actividadId,
                                                     nombre: actividadNombre,
                                                     estado,
                                                 });
                                                 setReaperturaVisible(true);
-                                                // Guardar contexto para reusar
                                                 (global as any).__pendingEstacion = {
                                                     id: est.id,
                                                     codigo: est.codigo,
                                                     servicios: est.servicios,
                                                 };
                                             } else {
-                                                // Flujo normal
                                                 abrirActividad(
                                                     est.id,
                                                     est.codigo,
@@ -232,14 +229,13 @@ export default function ProyectoDetalleScreen() {
                     <ConfirmarReaperturaModal
                         visible={reaperturaVisible && actividadPendiente !== null}
                         nombreActividad={actividadPendiente?.nombre ?? ''}
-                        fechaCompletada={null} // Si tienes la fecha, pásala aquí
+                        fechaCompletada={null}
                         onVerFotos={() => {
                             setReaperturaVisible(false);
                             if (!actividadPendiente) return;
                             const ctx = (global as any).__pendingEstacion;
                             if (!ctx) return;
 
-                            // Sembrar context y abrir el álbum directamente
                             seed({
                                 proyectoId: proyecto!.id,
                                 proyectoNombre: proyecto!.nombre,
@@ -285,7 +281,6 @@ export default function ProyectoDetalleScreen() {
                 <AppBottomNav active="inicio" />
 
             </View>
-            {/* FAB: Cerrar Día (fuera del View interior para que quede encima) */}
             <TouchableOpacity
                 style={[
                     styles.fabCerrarDia,
