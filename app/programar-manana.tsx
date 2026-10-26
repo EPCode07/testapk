@@ -38,7 +38,7 @@ export default function ProgramarMananaScreen() {
     const [cargando, setCargando] = useState(true);
     const [guardando, setGuardando] = useState(false);
     const [servicios, setServicios] = useState<{ id: number; nombre: string }[]>([]);
-
+    const [extras, setExtras] = useState<ActividadProgramable[]>([]);
     const [modalCrearAbierto, setModalCrearAbierto] = useState(false);
     const [nuevoNombre, setNuevoNombre] = useState('');
     const [nuevoTipo, setNuevoTipo] = useState('tarea');
@@ -52,8 +52,9 @@ export default function ProgramarMananaScreen() {
 
         programacionService
             .listarProgramables(estacionId)
-            .then(({ data, manana }) => {
+            .then(({ data, extras, manana }) => {
                 setActividades(data);
+                setExtras(extras);
                 setFechaManana(manana);
 
                 const set = new Set<number>();
@@ -88,6 +89,9 @@ export default function ProgramarMananaScreen() {
     };
 
     const handleGuardar = async () => {
+
+        if (seleccionadas.size === 0 && extras.length > 0) { router.back(); return; }
+
         if (seleccionadas.size === 0) {
             Alert.alert(
                 'Sin actividades',
@@ -144,9 +148,7 @@ export default function ProgramarMananaScreen() {
                 programada_para: fechaManana,
             });
 
-            setActividades((prev) => [...prev, nueva]);
-
-            setSeleccionadas((prev) => new Set(prev).add(nueva.id));
+            setExtras((prev) => [...prev, nueva]);
 
             setModalCrearAbierto(false);
             setNuevoNombre('');
@@ -154,7 +156,7 @@ export default function ProgramarMananaScreen() {
             setNuevoDescripcion('');
             setServicioSeleccionadoId(null);
 
-            Alert.alert('Tarea creada', 'Se agregó a la lista para mañana.');
+            Alert.alert('Tarea creada', 'Se agregó como actividad extra para mañana. No cuenta en el avance del proyecto.');
         } catch (err: any) {
             Alert.alert('Error', err?.message ?? 'No se pudo crear la tarea');
         } finally {
@@ -265,6 +267,21 @@ export default function ProgramarMananaScreen() {
                                 </TouchableOpacity>
                             );
                         })}
+                    </>
+                )}
+
+                {extras.length > 0 && (
+                    <>
+                        <Text style={styles.sectionTitle}>Actividades extra para mañana</Text>
+                        {extras.map((e) => (
+                            <View key={e.id} style={styles.actRow}>
+                                <Ionicons name="add-circle" size={18} color="#B5121B" />
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.actNombre}>{e.nombre}</Text>
+                                    {e.servicio_nombre && <Text style={styles.actServicio}>{e.servicio_nombre}</Text>}
+                                </View>
+                            </View>
+                        ))}
                     </>
                 )}
 

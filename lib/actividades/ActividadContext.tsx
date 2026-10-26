@@ -53,8 +53,7 @@ type ContextValue = {
     transferirFotosAActividad: (
         nuevaActividadId: number
     ) => Promise<ActividadEnCurso | undefined>;
-    marcarFotosSubidas: (idsFotos: string[]) => Promise<void>;   // 👈 nuevo
-
+    marcarFotosSubidas: (idsFotos: string[]) => Promise<void>;
 };
 
 const Ctx = createContext<ContextValue | null>(null);

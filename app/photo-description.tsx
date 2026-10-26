@@ -12,12 +12,12 @@ import {
     StatusBar,
     StyleSheet,
     Text,
-    TextInput,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import InputTexto, { InputTextoRef } from '@/components/Inputtexto';
 import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 import { useActividad } from '../lib/actividades/ActividadContext';
 import { FotoCaptura } from '../lib/actividades/types';
@@ -55,59 +55,52 @@ export default function PhotoDescribeScreen() {
 // ============================================================
 // CONTENIDO (se remonta por key)
 // ============================================================
+
+
+// app/photo-description.tsx  —  CAMBIOS (los estilos y el resto del archivo no se tocan)
+//
+// 1) Imports:
+//      - quita `TextInput` de 'react-native'
+//      + import InputTexto, { type InputTextoRef } from '../components/InputTexto';
+//
+// 2) Reemplaza SOLO la función PhotoDescribeContent por esta.
+//    Las diferencias: ya no hay `descripcion` ni `descripcionTemporal` en estado ni `value` en el
+//    campo; el texto lo guarda InputTexto y se lee con campo.current.getValue().
+
 function PhotoDescribeContent({ foto }: { foto: FotoCaptura }) {
     const router = useRouter();
-    const inputRef = useRef<TextInput>(null);
+    const campo = useRef<InputTextoRef>(null);
     const { actualizarFoto, eliminarFoto } = useActividad();
 
-    // Estado inicial derivado directamente de la prop.
-    // Gracias al key del padre, no necesitamos sincronizar nada.
-    const [descripcion, setDescripcion] = useState(
-        foto.descripcionIndividual ?? ''
-    );
-    const [editandoDescripcion, setEditandoDescripcion] = useState(false);
-    const [descripcionTemporal, setDescripcionTemporal] = useState('');
-    const [isListening, setIsListening] = useState(false);
+    const descripcionGuardada = foto.descripcionIndividual ?? '';
+    const subida = !!foto.subidaAlServidor;
 
+    const [editandoDescripcion, setEditandoDescripcion] = useState(false);
+    const [isListening, setIsListening] = useState(false);
     const textoBaseRef = useRef('');
 
-    const debeMostrarReadonly =
-        !!foto.subidaAlServidor && !editandoDescripcion;
+    // Si la foto ya se subió, se muestra solo lectura hasta que se pulse "Editar"
+    const mostrarInput = !subida || editandoDescripcion;
+    const debeMostrarReadonly = !mostrarInput;
 
-    // ------------------------------------------------------------
-    // Foco automático al entrar en edición (no es setState → ok)
-    // ------------------------------------------------------------
+    // Foco automático al entrar en edición
     useEffect(() => {
         if (editandoDescripcion) {
-            const t = setTimeout(() => inputRef.current?.focus(), 50);
+            const t = setTimeout(() => campo.current?.focus(), 50);
             return () => clearTimeout(t);
         }
     }, [editandoDescripcion]);
 
-    // ------------------------------------------------------------
-    // Voz: suscripción externa (uso legítimo de useEffect)
-    // ------------------------------------------------------------
+    // Voz: suscripción externa
     useEffect(() => {
-        const subStart = ExpoSpeechRecognitionModule.addListener(
-            'start',
-            () => setIsListening(true)
-        );
-
-        const subEnd = ExpoSpeechRecognitionModule.addListener(
-            'end',
-            () => setIsListening(false)
-        );
-
-        const subResult = ExpoSpeechRecognitionModule.addListener(
-            'result',
-            (event: any) => {
-                const texto = event.results[0]?.transcript ?? '';
-                if (!texto) return;
-                const base = textoBaseRef.current.trimEnd();
-                const nuevo = base.length > 0 ? `${base} ${texto}` : texto;
-                setDescripcionTemporal(nuevo);
-            }
-        );
+        const subStart = ExpoSpeechRecognitionModule.addListener('start', () => setIsListening(true));
+        const subEnd = ExpoSpeechRecognitionModule.addListener('end', () => setIsListening(false));
+        const subResult = ExpoSpeechRecognitionModule.addListener('result', (event: any) => {
+            const texto = event.results[0]?.transcript ?? '';
+            if (!texto) return;
+            const base = textoBaseRef.current.trimEnd();
+            campo.current?.setValue(base.length > 0 ? `${base} ${texto}` : texto);
+        });
 
         return () => {
             subStart.remove();
@@ -116,29 +109,19 @@ function PhotoDescribeContent({ foto }: { foto: FotoCaptura }) {
         };
     }, []);
 
-    // ------------------------------------------------------------
-    // Voz: handlers
-    // ------------------------------------------------------------
     const iniciarBusquedaPorVoz = async () => {
-        const { granted } =
-            await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+        const { granted } = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
         if (!granted) {
             Alert.alert('Permiso denegado', 'Necesitamos acceso al micrófono.');
             return;
         }
 
-        const textoActual = editandoDescripcion
-            ? descripcionTemporal
-            : descripcion;
-        textoBaseRef.current = textoActual;
+        textoBaseRef.current = mostrarInput
+            ? (campo.current?.getValue() ?? descripcionGuardada)
+            : descripcionGuardada;
 
-        if (!editandoDescripcion) {
-            setDescripcionTemporal(textoActual);
-            setEditandoDescripcion(true);
-        } else {
-            // Ya estamos editando → asegurar foco (el useEffect no dispara)
-            inputRef.current?.focus();
-        }
+        if (!editandoDescripcion) setEditandoDescripcion(true);
+        else campo.current?.focus();
 
         ExpoSpeechRecognitionModule.start({
             lang: 'es-ES',
@@ -158,23 +141,14 @@ function PhotoDescribeContent({ foto }: { foto: FotoCaptura }) {
         setIsListening(false);
     };
 
-    // ------------------------------------------------------------
-    // Handlers de edición
-    // ------------------------------------------------------------
-    const handleEditar = () => {
-        setDescripcionTemporal(descripcion);
-        setEditandoDescripcion(true);
-    };
+    const handleEditar = () => setEditandoDescripcion(true);
 
     const handleCancelarEdicion = () => {
+        if (!subida) campo.current?.setValue(descripcionGuardada);
         setEditandoDescripcion(false);
-        setDescripcionTemporal('');
         textoBaseRef.current = '';
     };
 
-    // ------------------------------------------------------------
-    // Guardar / eliminar / volver
-    // ------------------------------------------------------------
     const volverAtras = () => {
         if (router.canGoBack()) {
             router.back();
@@ -184,14 +158,11 @@ function PhotoDescribeContent({ foto }: { foto: FotoCaptura }) {
     };
 
     const handleGuardar = async () => {
-        const textoFinal = editandoDescripcion
-            ? descripcionTemporal.trim()
-            : descripcion.trim();
+        const textoFinal = (
+            mostrarInput ? (campo.current?.getValue() ?? descripcionGuardada) : descripcionGuardada
+        ).trim();
 
-        await actualizarFoto(foto.idLocal, {
-            descripcionIndividual: textoFinal,
-        });
-
+        await actualizarFoto(foto.idLocal, { descripcionIndividual: textoFinal });
         volverAtras();
     };
 
@@ -213,9 +184,6 @@ function PhotoDescribeContent({ foto }: { foto: FotoCaptura }) {
         );
     };
 
-    // ------------------------------------------------------------
-    // Render
-    // ------------------------------------------------------------
     return (
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
             <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -242,11 +210,7 @@ function PhotoDescribeContent({ foto }: { foto: FotoCaptura }) {
                     keyboardDismissMode="on-drag"
                 >
                     <View style={styles.imageWrapper}>
-                        <Image
-                            source={{ uri: foto.uriLocal }}
-                            style={styles.image}
-                            resizeMode="contain"
-                        />
+                        <Image source={{ uri: foto.uriLocal }} style={styles.image} resizeMode="contain" />
                     </View>
 
                     <View style={styles.infoRow}>
@@ -256,25 +220,17 @@ function PhotoDescribeContent({ foto }: { foto: FotoCaptura }) {
                                 : 'Sin coordenadas'}
                         </Text>
                         {foto.altitud != null && (
-                            <Text style={styles.infoText}>
-                                {Math.round(foto.altitud)} m
-                            </Text>
+                            <Text style={styles.infoText}>{Math.round(foto.altitud)} m</Text>
                         )}
                     </View>
 
-                    {/* Label + Micrófono */}
                     <View style={styles.row}>
                         <Text style={styles.sectionLabel}>Descripción individual</Text>
 
                         <TouchableOpacity
                             style={styles.micButton}
-                            onPress={
-                                isListening
-                                    ? detenerBusquedaPorVoz
-                                    : iniciarBusquedaPorVoz
-                            }
+                            onPress={isListening ? detenerBusquedaPorVoz : iniciarBusquedaPorVoz}
                             activeOpacity={0.7}
-                            disabled={debeMostrarReadonly && !editandoDescripcion ? false : false}
                         >
                             <Ionicons
                                 name={isListening ? 'mic' : 'mic-outline'}
@@ -291,37 +247,20 @@ function PhotoDescribeContent({ foto }: { foto: FotoCaptura }) {
                             </Text>
 
                             <View style={styles.readonlyActions}>
-                                <TouchableOpacity
-                                    style={styles.editBtn}
-                                    onPress={handleEditar}
-                                    activeOpacity={0.7}
-                                >
-                                    <Ionicons
-                                        name="pencil"
-                                        size={16}
-                                        color="#B5121B"
-                                    />
+                                <TouchableOpacity style={styles.editBtn} onPress={handleEditar} activeOpacity={0.7}>
+                                    <Ionicons name="pencil" size={16} color="#B5121B" />
                                     <Text style={styles.editBtnText}>Editar</Text>
                                 </TouchableOpacity>
                             </View>
                         </View>
                     ) : (
                         <View style={styles.formWrapper}>
-                            <TextInput
-                                ref={inputRef}
+                            <InputTexto
+                                ref={campo}
+                                valorInicial={descripcionGuardada}
                                 style={styles.descripcionInput}
                                 placeholder="Describe esta foto (opcional)..."
                                 placeholderTextColor="#9CA3AF"
-                                value={
-                                    editandoDescripcion
-                                        ? descripcionTemporal
-                                        : descripcion
-                                }
-                                onChangeText={
-                                    editandoDescripcion
-                                        ? setDescripcionTemporal
-                                        : setDescripcion
-                                }
                                 multiline
                                 textAlignVertical="top"
                             />
@@ -333,9 +272,7 @@ function PhotoDescribeContent({ foto }: { foto: FotoCaptura }) {
                                         onPress={handleCancelarEdicion}
                                         activeOpacity={0.85}
                                     >
-                                        <Text style={styles.cancelBtnText}>
-                                            Cancelar
-                                        </Text>
+                                        <Text style={styles.cancelBtnText}>Cancelar</Text>
                                     </TouchableOpacity>
 
                                     <TouchableOpacity
@@ -343,17 +280,11 @@ function PhotoDescribeContent({ foto }: { foto: FotoCaptura }) {
                                         onPress={handleGuardar}
                                         activeOpacity={0.85}
                                     >
-                                        <Text style={styles.saveBtnText}>
-                                            Guardar
-                                        </Text>
+                                        <Text style={styles.saveBtnText}>Guardar</Text>
                                     </TouchableOpacity>
                                 </View>
                             ) : (
-                                <TouchableOpacity
-                                    style={styles.saveBtn}
-                                    onPress={handleGuardar}
-                                    activeOpacity={0.85}
-                                >
+                                <TouchableOpacity style={styles.saveBtn} onPress={handleGuardar} activeOpacity={0.85}>
                                     <Text style={styles.saveBtnText}>Guardar</Text>
                                 </TouchableOpacity>
                             )}
@@ -364,6 +295,12 @@ function PhotoDescribeContent({ foto }: { foto: FotoCaptura }) {
         </SafeAreaView>
     );
 }
+
+
+
+
+
+
 
 // ============================================================
 // ESTADO VACÍO

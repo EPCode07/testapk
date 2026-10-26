@@ -19,7 +19,6 @@ export async function exportarActividadAlServidor(
         return { success: false, message: 'Sin sesión activa' };
     }
 
-    // 🎯 Metadata aplanada en un solo JSON string
     const metadata = {
         estacion_servicio_actividad_id: actividad.estacionServicioActividadId,
         descripcion_general: actividad.descripcionGeneral ?? '',
@@ -40,10 +39,8 @@ export async function exportarActividadAlServidor(
 
     const formData = new FormData();
 
-    // 1. Metadata como JSON string
     formData.append('metadata', JSON.stringify(metadata));
 
-    // 2. Archivos con nombre plano + sanitización defensiva
     actividad.fotos.forEach((foto, i) => {
         const uri = String(foto.uriLocal ?? '').trim();
 
@@ -84,8 +81,7 @@ export async function exportarActividadAlServidor(
             xhr.open('POST', url);
             xhr.setRequestHeader('Accept', 'application/json');
             xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-            // ⚠️ NO setRequestHeader('Content-Type') — el boundary se añade solo
-            xhr.timeout = 60000; // 60s
+            xhr.timeout = 60000;
             xhr.send(formData);
         });
 
