@@ -19,7 +19,6 @@ const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 const MAX_OFFLINE_MS = 7 * 24 * 60 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 10000;
 
-// Si el servidor responde 5xx o algo inesperado, ¿permitir entrar offline?
 const OFFLINE_ON_SERVER_ERROR = false;
 
 const CRED_VERSION = 2;
@@ -91,8 +90,8 @@ function safeEqual(a: string, b: string): boolean {
 
 /**
  * Petición con timeout.
- * - Fallo de transporte o timeout  → NetworkError
- * - 5xx o cuerpo que no es JSON    → ServerError
+ *   Fallo de transporte o timeout  → NetworkError
+ *   5xx o cuerpo que no es JSON    → ServerError
  */
 async function request(
     path: string,
@@ -105,7 +104,7 @@ async function request(
     let text: string;
     try {
         res = await fetch(`${BASE_URL}${path}`, { ...init, signal: ctrl.signal });
-        text = await res.text(); // se lee el cuerpo mientras el timeout sigue activo
+        text = await res.text();
     } catch (e: any) {
         throw new NetworkError(e?.message ?? 'Sin conexión');
     } finally {
@@ -133,7 +132,6 @@ async function request(
     return { res, json };
 }
 
-// ---------- Login offline ----------
 async function loginOffline(email: string, password: string): Promise<AuthUser> {
     const cred = await getStoredCred();
     if (!cred || cred.email !== email) {
@@ -161,12 +159,10 @@ async function loginOffline(email: string, password: string): Promise<AuthUser> 
     const cachedUser = await getAuthUser();
     if (!cachedUser) throw new Error('Sin conexión y sin datos locales del usuario');
 
-    // Marcador de sesión offline (no es un token real)
     await setToken('offline');
     return cachedUser;
 }
 
-// ---------- Servicio ----------
 export const authService = {
     async login(email: string, password: string, allowOffline = true): Promise<AuthUser> {
         const normalizedEmail = email.trim().toLowerCase();
@@ -217,7 +213,6 @@ export const authService = {
         await setAuthUser(json.user);
         await setLastOnlineNow();
 
-        // Guardar credenciales offline: si falla, no debe romper el login
         try {
             const salt = randomSalt();
             const hash = await hashPassword(password, salt, KDF_ITERATIONS);
@@ -239,7 +234,6 @@ export const authService = {
         const token = await getToken();
         if (!token) return null;
 
-        // Token marcador offline → usa cache directo
         if (token === 'offline') {
             return await getAuthUser();
         }
@@ -254,7 +248,6 @@ export const authService = {
             });
 
             if (res.status === 401) {
-                // Token realmente inválido → limpia sesión completa
                 await clearToken();
                 await clearAuthUser();
                 await clearStoredCred();
@@ -269,7 +262,6 @@ export const authService = {
             await setLastOnlineNow();
             return json.user;
         } catch {
-            // Sin red, timeout o error del servidor → devuelve cache
             return await getAuthUser();
         }
     },
@@ -287,7 +279,6 @@ export const authService = {
                     },
                 });
             } catch {
-                // ignora errores al cerrar sesión
             }
         }
 
@@ -295,6 +286,36 @@ export const authService = {
         await clearAuthUser();
         await clearStoredCred();
     },
+
+    async resetPassword(
+        new_password: string,
+        new_password_confirm: string,
+    ): Promise<void> {
+        const token = await getToken();
+        if (!token) throw new Error('No hay token');
+
+        const res = await fetch(`${BASE_URL}/api/password`, {
+            method: 'PUT',
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+            },
+            body: JSON.stringify({
+                new_password,
+                new_password_confirm,
+            }),
+        });
+
+        const json = await res.json();
+        if (!res.ok || json.success !== true) {
+            const firstError = json?.errors
+                ? (Object.values(json.errors).flat() as string[])[0]
+                : null;
+            throw new Error(firstError ?? json?.message ?? `Error ${res.status}`);
+        }
+    },
+
 
     async clearSession(): Promise<void> {
         await clearToken();
@@ -318,7 +339,6 @@ export const authService = {
         return (await getToken()) === 'offline';
     },
 
-    /** true solo si hay un token real (no el marcador offline) */
     async hasRealSession(): Promise<boolean> {
         const t = await getToken();
         return !!t && t !== 'offline';

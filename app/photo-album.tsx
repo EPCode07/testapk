@@ -22,7 +22,9 @@ import { exportarActividadAlServidor } from '../lib/actividades/exportarActivida
 import { FotoCaptura } from '../lib/actividades/types';
 import { useSync } from '../lib/sync/SyncContext';
 
+import AvanceSheet, { SugerenciaAvance } from '@/components/AvanceSheet';
 import SucesoModal from '@/components/sucesos/SucesoModal';
+import { programacionService } from '@/lib/actividades/programacionService';
 import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 
 export default function PhotoAlbumScreen() {
@@ -43,9 +45,6 @@ export default function PhotoAlbumScreen() {
 
     const { addExportacionToQueue } = useSync();
 
-    // ============================================================
-    // HOOKS (todos juntos, antes de cualquier return)
-    // ============================================================
 
     const [descripcion, setDescripcion] = useState('');
     const [conforme, setConforme] = useState<boolean | null>(null);
@@ -54,6 +53,8 @@ export default function PhotoAlbumScreen() {
     const [descripcionTemporal, setDescripcionTemporal] = useState('');
     const [isListening, setIsListening] = useState(false);
     const textoBaseRef = useRef('');
+    const [sugerencia, setSugerencia] = useState<SugerenciaAvance | null>(null);
+    const [guardandoAvance, setGuardandoAvance] = useState(false);
 
     const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -151,10 +152,6 @@ export default function PhotoAlbumScreen() {
         setIsListening(false);
     };
 
-    // ============================================================
-    // DERIVADOS
-    // ============================================================
-
     const totalFotos = actividadEnCurso?.fotos.length ?? 0;
 
     const estaExportada =
@@ -167,16 +164,32 @@ export default function PhotoAlbumScreen() {
     const debeMostrarReadonly =
         estaExportada && tieneDescripcion && !editandoDescripcion;
 
-    // ============================================================
-    // EARLY RETURN
-    // ============================================================
+
+    const fotosSubidasRef = useRef(0);
+
+    const mostrarAlertaFinal = () => {
+        Alert.alert(
+            'Guardado con éxito',
+            `${fotosSubidasRef.current} foto(s) subidas al servidor correctamente.\n\n¿Quieres agregar sucesos diarios?`,
+            [
+                { text: 'Salir', style: 'cancel', onPress: irAProyectoDetalle },
+                {
+                    text: 'Sucesos diarios',
+                    onPress: () => {
+                        setEsperandoConfirmacionSuceso(true);
+                        setSucesoModalVisible(true);
+                    },
+                },
+            ]
+        );
+    };
 
     if (!actividadEnCurso) {
         return (
             <SafeAreaView style={styles.container}>
                 <StatusBar barStyle="dark-content" />
                 <View style={styles.emptyWrapper}>
-                    <Text style={styles.emptyText}>No hay actividad en curso</Text>
+                    <Text style={styles.emptyText}>No hay tarea en curso</Text>
                     <TouchableOpacity
                         style={styles.backPill}
                         onPress={() => {
@@ -194,10 +207,6 @@ export default function PhotoAlbumScreen() {
         );
     }
 
-    // ============================================================
-    // NAVEGACIÓN
-    // ============================================================
-
     const irAProyectoDetalle = () => {
         if (proyectoId) {
             router.dismissTo({
@@ -210,10 +219,6 @@ export default function PhotoAlbumScreen() {
         }
     };
 
-    // ============================================================
-    // HANDLERS
-    // ============================================================
-
     const handleFotoPress = (foto: FotoCaptura) => {
         router.push({
             pathname: '/photo-description' as any,
@@ -223,7 +228,7 @@ export default function PhotoAlbumScreen() {
 
     const handleDescartarActividad = () => {
         Alert.alert(
-            'Descartar actividad',
+            'Descartar tarea',
             `Se eliminarán ${totalFotos} foto(s) sin exportar. Esta acción no se puede deshacer.`,
             [
                 { text: 'Cancelar', style: 'cancel' },
@@ -285,13 +290,44 @@ export default function PhotoAlbumScreen() {
         );
     };
 
+    const cerrarAvance = () => {
+        setSugerencia(null);
+        mostrarAlertaFinal();
+    };
+
+    const guardarAvance = async (avance: number) => {
+        if (!sugerencia || !actividadEnCurso) return;
+        setGuardandoAvance(true);
+        try {
+            await programacionService.registrarAvance(actividadEnCurso.estacionServicioActividadId, { avance });
+            cerrarAvance();
+        } catch (e: any) {
+            Alert.alert('Error', e?.message ?? 'No se pudo guardar el avance');
+        } finally {
+            setGuardandoAvance(false);
+        }
+    };
+
+    const completarAvance = async () => {
+        if (!actividadEnCurso) return;
+        setGuardandoAvance(true);
+        try {
+            await programacionService.registrarAvance(actividadEnCurso.estacionServicioActividadId, { completar: true });
+            cerrarAvance();
+        } catch (e: any) {
+            Alert.alert('Error', e?.message ?? 'No se pudo completar la tarea');
+        } finally {
+            setGuardandoAvance(false);
+        }
+    };
+
     const handleExportar = async () => {
         if (exportando) return;
 
         if (!conforme) {
             Alert.alert(
                 'Falta confirmación',
-                'Debes marcar la actividad como Conforme u Observada antes de exportar.'
+                'Debes marcar la tarea como Conforme u Observada antes de exportar.'
             );
             return;
         }
@@ -324,7 +360,7 @@ export default function PhotoAlbumScreen() {
                 try {
                     await MediaLibrary.saveToLibraryAsync(foto.uriLocal);
                 } catch (e) {
-                    console.warn('⚠️ No se pudo guardar en galería:', e);
+                    console.warn('No se pudo guardar en galería:', e);
                 }
             }
 
@@ -348,7 +384,7 @@ export default function PhotoAlbumScreen() {
                 });
 
                 Alert.alert(
-                    '⏳ Guardado localmente',
+                    'Guardado localmente',
                     `Las ${fotosNuevas.length} foto(s) nuevas se guardaron en tu galería. Se subirán al servidor automáticamente cuando haya conexión.\n\nMotivo: ${resultado.message}`,
                     [{ text: 'OK', onPress: irAProyectoDetalle }]
                 );
@@ -357,36 +393,30 @@ export default function PhotoAlbumScreen() {
 
             await marcarFotosSubidas(fotosNuevas.map((f) => f.idLocal));
             await marcarExportada();
+            fotosSubidasRef.current = fotosNuevas.length;
 
-            Alert.alert(
-                'Guardado con éxito',
-                `${fotosNuevas.length} foto(s) subidas al servidor correctamente.\n\n¿Quieres agregar sucesos diarios?`,
-                [
-                    {
-                        text: 'Salir',
-                        style: 'cancel',
-                        onPress: irAProyectoDetalle,
-                    },
-                    {
-                        text: 'Sucesos diarios',
-                        onPress: () => {
-                            setEsperandoConfirmacionSuceso(true);
-                            setSucesoModalVisible(true);
-                        },
-                    },
-                ]
-            );
+            if (resultado.actividad?.es_multidia && resultado.actividad.estado !== 'completado') {
+                try {
+                    const s = await programacionService.sugerenciaAvance(resultado.actividad.id);
+                    if (s.es_multidia && !s.es_extra) {
+                        setSugerencia(s);
+                        return;
+                    }
+                } catch (e) {
+                    console.warn('No se pudo obtener la sugerencia de avance:', e);
+                }
+            }
+
+            mostrarAlertaFinal();
         } catch (e) {
             console.error('Error exportando:', e);
-            Alert.alert('Error', 'No se pudo exportar la actividad.');
+            Alert.alert('Error', 'No se pudo exportar la tarea.');
         } finally {
             setExportando(false);
         }
     };
 
-    // ============================================================
-    // JSX
-    // ============================================================
+
 
     return (
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -498,7 +528,7 @@ export default function PhotoAlbumScreen() {
                         <TextInput
                             ref={inputRef}
                             style={styles.descripcionInput}
-                            placeholder="Describe brevemente la actividad realizada..."
+                            placeholder="Describe brevemente la tarea realizada..."
                             placeholderTextColor="#9CA3AF"
                             value={editandoDescripcion ? descripcionTemporal : descripcion}
                             onChangeText={
@@ -533,8 +563,7 @@ export default function PhotoAlbumScreen() {
                     </>
                 )}
 
-                {/* Conforme / Observado */}
-                <Text style={styles.sectionLabel}>Estado de la actividad</Text>
+                <Text style={styles.sectionLabel}>Estado de la tarea</Text>
                 <View style={styles.decisionRow}>
                     <TouchableOpacity
                         style={[
@@ -553,7 +582,7 @@ export default function PhotoAlbumScreen() {
                         </Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity
+                    {/* <TouchableOpacity
                         style={[
                             styles.decisionBtn,
                             conforme === false && styles.decisionBtnObservado,
@@ -568,7 +597,7 @@ export default function PhotoAlbumScreen() {
                         >
                             Observada
                         </Text>
-                    </TouchableOpacity>
+                    </TouchableOpacity> */}
                 </View>
             </ScrollView>
 
@@ -584,11 +613,21 @@ export default function PhotoAlbumScreen() {
                     ) : (
                         <>
                             <Ionicons name="cloud-upload-outline" size={20} color="#FFFFFF" />
-                            <Text style={styles.exportBtnText}>Exportar actividad</Text>
+                            <Text style={styles.exportBtnText}>Exportar tarea</Text>
                         </>
                     )}
                 </TouchableOpacity>
             </View>
+
+            {sugerencia && (
+                <AvanceSheet
+                    sugerencia={sugerencia}
+                    guardando={guardandoAvance}
+                    onGuardarAvance={guardarAvance}
+                    onCompletar={completarAvance}
+                    onCerrar={cerrarAvance}
+                />
+            )}
 
             <SucesoModal
                 visible={sucesoModalVisible}

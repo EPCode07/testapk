@@ -5,11 +5,10 @@ import {
     ActivityIndicator,
     Alert,
     ScrollView,
-    StatusBar,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -79,9 +78,11 @@ export default function SucesosScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
+        <SafeAreaView
+            style={{ flex: 1, backgroundColor: '#ffffffff' }}
+            edges={['top']}
+        >
             <View style={{ backgroundColor: '#ECEDEF', flex: 1 }}>
-                <StatusBar barStyle="dark-content" backgroundColor="#ECEDEF" />
 
                 <AppHeader />
 

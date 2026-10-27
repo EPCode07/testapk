@@ -31,7 +31,6 @@ export default function AjustesScreen() {
     const ahora = useAhora();
     const netInfo = useNetInfo();
 
-    // ------- Estado PRIMER ARCHIVO -------
     const [alert, setAlert] = useState({ visible: false, title: '', message: '' });
     const [generando, setGenerando] = useState(false);
     const [isAlertVisible, setIsAlertVisible] = useState(false);
@@ -40,11 +39,9 @@ export default function AjustesScreen() {
     const [syncNetwork, setSyncNetwork] = useState<SyncNetwork>('wifi');
     const [menuVisible, setMenuVisible] = useState(false);
 
-    // ------- Estado SEGUNDO ARCHIVO -------
     const [modalDescargaVisible, setModalDescargaVisible] = useState(false);
     const [meta, setMeta] = useState<CacheMetadata | null>(null);
 
-    // ------- Sync context -------
     const {
         isSyncing,
         isOnline,
@@ -56,7 +53,6 @@ export default function AjustesScreen() {
     const hasPending = pendingCount > 0;
     const isErrorState = !isOnline || hasPending;
 
-    // ------- Derivados PRIMER ARCHIVO -------
     const syncStatusText = isSyncing
         ? 'Sincronizando...'
         : !isOnline
@@ -81,32 +77,25 @@ export default function AjustesScreen() {
         return 'Wifi y Datos';
     };
 
-    // ------- Focus: carga de datos (fusionado) -------
     useFocusEffect(
         useCallback(() => {
             (async () => {
-                // 1. Nombre del usuario (legacy)
                 getUsuario().then(setUsuario);
 
-                // 2. Preferencia de red
                 const pref = await syncPreferences.getNetwork();
                 setSyncNetwork(pref);
 
-                // 3. Usuario en caché
                 const cached = await authService.getStoredUser();
                 if (cached) setUser(cached);
 
-                // 4. Refrescar desde backend (silencioso)
                 const fresh = await authService.me();
                 if (fresh) setUser(fresh);
 
-                // 5. Metadata de caché local (del segundo archivo)
                 proyectoCache.leerMetadata().then(setMeta);
             })();
         }, [])
     );
 
-    // ------- Handlers PRIMER ARCHIVO -------
     const handleLogout = async () => {
         try {
             await authService.logout();
@@ -134,7 +123,6 @@ export default function AjustesScreen() {
     };
 
 
-    // ------- Handlers SEGUNDO ARCHIVO -------
     const handleDescargarData = () => {
         if (!isOnline) {
             showMessage({
@@ -178,26 +166,40 @@ export default function AjustesScreen() {
     };
 
     const handleLimpiarCache = () => {
-        Alert.alert(
-            'Limpiar caché',
-            'Se eliminarán los proyectos, estaciones y actividades guardadas localmente. La próxima vez que entres con conexión se descargarán de nuevo.',
-            [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                    text: 'Limpiar',
-                    style: 'destructive',
-                    onPress: async () => {
-                        await proyectoCache.limpiar();
-                        setMeta(null);
-                        showMessage({
-                            message: 'Caché eliminada',
-                            type: 'success',
-                            icon: 'success',
-                        });
+        if (!isOnline) {
+            Alert.alert(
+                'Sin conexión',
+                'Estas trabajando con data en modo offline, no se puede limpiar la caché.',
+                [
+                    {
+                        text: 'OK',
+                        style: 'destructive',
                     },
-                },
-            ]
-        );
+                ]
+            );
+            return;
+        } else {
+            Alert.alert(
+                'Limpiar caché',
+                'Se eliminarán los proyectos, estaciones y actividades guardadas localmente. La próxima vez que entres con conexión deberas descargarlas nuevamente.',
+                [
+                    { text: 'Cancelar', style: 'cancel' },
+                    {
+                        text: 'Limpiar',
+                        style: 'destructive',
+                        onPress: async () => {
+                            await proyectoCache.limpiar();
+                            setMeta(null);
+                            showMessage({
+                                message: 'Caché eliminada',
+                                type: 'success',
+                                icon: 'success',
+                            });
+                        },
+                    },
+                ]
+            );
+        }
     };
 
     const formatearFecha = (ts: number | null | undefined, ahora: number) => {
@@ -221,7 +223,10 @@ export default function AjustesScreen() {
     //  RENDER
     // ----------------------------------------------------------------
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
+        <SafeAreaView
+            style={{ flex: 1, backgroundColor: '#ffffffff' }}
+            edges={['top']}
+        >
             <View style={{ backgroundColor: '#ECEDEF', flex: 1 }}>
                 <StatusBar barStyle="dark-content" backgroundColor="#ECEDEF" />
 
@@ -310,7 +315,7 @@ export default function AjustesScreen() {
                             </View>
                             <View style={styles.itemTextContainer}>
                                 <Text style={styles.itemLabel}>SEGURIDAD</Text>
-                                <Text style={styles.itemValue}>Correo Electrónico, Biometría</Text>
+                                <Text style={styles.itemValue}>Credenciales, Biometría</Text>
                             </View>
                             <Ionicons name="chevron-forward" size={20} color="#666" />
                         </TouchableOpacity>

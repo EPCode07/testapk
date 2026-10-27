@@ -10,7 +10,7 @@ export type SugerenciaAvance = {
     avance_actual: number;
     dia_actual: number;
     dias_programados: number;
-    sugerido: number; // 100 = ya toca completarla
+    sugerido: number;
 };
 
 type Props = {
@@ -18,7 +18,7 @@ type Props = {
     guardando: boolean;
     onGuardarAvance: (avance: number) => void;
     onCompletar: () => void;
-    onCerrar: () => void; // "Ahora no": la evidencia ya quedó guardada
+    onCerrar: () => void;
 };
 
 export default function AvanceSheet({ sugerencia, guardando, onGuardarAvance, onCompletar, onCerrar }: Props) {
@@ -30,10 +30,13 @@ export default function AvanceSheet({ sugerencia, guardando, onGuardarAvance, on
         return [...new Set(base)].filter((n) => n > sugerencia.avance_actual && n < 100).sort((a, b) => a - b);
     }, [sugerencia]);
 
-    // Por defecto queda marcado el sugerido (salvo que ya toque completar)
-    const [elegido, setElegido] = useState<number | null>(
-        sugerencia && sugerencia.sugerido < 100 ? sugerencia.sugerido : null
-    );
+    const [elegidoManual, setElegido] = useState<number | null | undefined>(undefined);
+    const elegido =
+        elegidoManual !== undefined
+            ? elegidoManual
+            : sugerencia && sugerencia.sugerido < 100
+                ? sugerencia.sugerido
+                : null;
 
     if (!sugerencia) return null;
     const tocaCompletar = sugerencia.sugerido >= 100;
@@ -41,7 +44,7 @@ export default function AvanceSheet({ sugerencia, guardando, onGuardarAvance, on
     const confirmarCompletar = () =>
         Alert.alert(
             'Completada al 100 %',
-            'La actividad se dará por terminada y ya no se podrá seguir registrando avance.',
+            'La tarea se dará por terminada y ya no se podrá seguir registrando avance.',
             [
                 { text: 'Cancelar', style: 'cancel' },
                 { text: 'Completar', onPress: onCompletar },

@@ -4,13 +4,13 @@ export type SyncNetwork = 'wifi' | 'any';
 
 const KEY = 'sync_network_preference';
 
-const DEFAULT_NETWORK: SyncNetwork = 'any';   // 👈 wifi + datos
+const DEFAULT_NETWORK: SyncNetwork = 'any';
 
 
 export const syncPreferences = {
     async getNetwork(): Promise<SyncNetwork> {
         const value = await AsyncStorage.getItem(KEY);
-        return (value as SyncNetwork) ?? DEFAULT_NETWORK;   // por defecto: solo WiFi
+        return (value as SyncNetwork) ?? DEFAULT_NETWORK;
     },
 
     async setNetwork(value: SyncNetwork): Promise<void> {

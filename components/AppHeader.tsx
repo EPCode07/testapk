@@ -37,7 +37,6 @@ export default function AppHeader({
 
     return (
         <View style={styles.header}>
-            {/* LADO IZQUIERDO */}
             <View style={styles.leftContainer}>
                 {variant === 'back' && (
                     <TouchableOpacity

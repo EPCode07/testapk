@@ -94,7 +94,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const syncNow = useCallback(
     async (force: boolean = false) => {
       if (syncingRef.current) return;
-      syncingRef.current = true; // candado síncrono, antes de cualquier await
+      syncingRef.current = true;
       let started = false;
 
       try {

@@ -92,9 +92,16 @@ export default function CameraScreen() {
     useFocusEffect(
         useCallback(() => {
             setImageToProcessUri(null);
+            if (Platform.OS === 'android') {
+                StatusBar.setHidden(true, 'fade');
+            }
+            return () => {
+                if (Platform.OS === 'android') {
+                    StatusBar.setHidden(false, 'fade');
+                }
+            };
         }, [])
     );
-
 
     useEffect(() => {
         const warmup = async () => {
@@ -354,9 +361,9 @@ export default function CameraScreen() {
 
 
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={{ flex: 1, backgroundColor: '#000000', paddingTop: 50 }}>
             <Stack.Screen options={{ headerShown: false }} />
-            <StatusBar barStyle="light-content" backgroundColor="#000000" translucent={true} />
+
 
             <CameraTopBar
                 showTitle={false}
@@ -533,7 +540,7 @@ export default function CameraScreen() {
                     </View>
                 )}
             </Modal>
-        </SafeAreaView>
+        </View>
     );
 }
 

@@ -104,7 +104,7 @@ export default function ReporteDetalleScreen() {
 
         Alert.alert(
             'Subsanar observación',
-            'El reporte se reabrirá para que puedas agregar las fotos faltantes. Las actividades volverán a estar en progreso.',
+            'El reporte se reabrirá para que puedas agregar las fotos faltantes. Las tareas volverán a estar en progreso.',
             [
                 { text: 'Cancelar', style: 'cancel' },
                 {
@@ -182,7 +182,6 @@ export default function ReporteDetalleScreen() {
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
                 >
-                    {/* ESTADO */}
                     <View style={styles.statusCard}>
                         <View style={[styles.statusIcon, { backgroundColor: config.bg }]}>
                             <Ionicons name={config.icon as any} size={26} color={config.text} />
@@ -195,7 +194,6 @@ export default function ReporteDetalleScreen() {
                         </View>
                     </View>
 
-                    {/* MOTIVO DE OBSERVACIÓN */}
                     {esObservado && reporte.motivo_rechazo && (
                         <View style={styles.motivoCard}>
                             <View style={styles.motivoHeader}>
@@ -209,7 +207,6 @@ export default function ReporteDetalleScreen() {
                         </View>
                     )}
 
-                    {/* INFO PRINCIPAL */}
                     <Text style={styles.sectionTitle}>Información general</Text>
 
                     <View style={styles.infoCard}>
@@ -271,7 +268,6 @@ export default function ReporteDetalleScreen() {
                         )}
                     </View>
 
-                    {/* RESUMEN EJECUTIVO */}
                     {reporte.resumen_ejecutivo && (
                         <>
                             <Text style={styles.sectionTitle}>Resumen ejecutivo</Text>
@@ -289,8 +285,10 @@ export default function ReporteDetalleScreen() {
                         </>
                     )}
 
-                    {/* ACCIONES */}
-                    <Text style={styles.sectionTitle}>Acciones</Text>
+                    {(reporte.estado === 'aprobado' || reporte.estado === 'rechazado') && (
+
+                        <Text style={styles.sectionTitle}>Acciones</Text>
+                    )}
                     {reporte.estado === 'rechazado' && (
                         <TouchableOpacity
                             style={[styles.actionBtn, styles.actionBtnDanger, subsanando && { opacity: 0.6 }]}
@@ -329,18 +327,6 @@ export default function ReporteDetalleScreen() {
                             )}
                         </TouchableOpacity>
                     )}
-                    {/* {puedeDescargar && (
-                        <TouchableOpacity
-                            style={[styles.actionBtn, styles.actionBtnWarning]}
-                            onPress={handleResumenIA}
-                            activeOpacity={0.85}
-                        >
-                            <Ionicons name="sparkles" size={20} color="#FFFFFF" />
-                            <Text style={styles.actionBtnWarningText}>
-                                {reporte.resumen_ejecutivo ? 'Editar resumen con IA' : 'Generar resumen con IA'}
-                            </Text>
-                        </TouchableOpacity>
-                    )} */}
                 </ScrollView>
             </View>
         </SafeAreaView>

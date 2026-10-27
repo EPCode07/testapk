@@ -38,7 +38,6 @@ export function useSafeNavigate(lockMs = 700) {
             () => ejecutar(() => router.dismissAll()),
             [ejecutar, router]
         ),
-        // 👇 Ahora es una función wrapper, no una referencia
         canGoBack: useCallback(() => router.canGoBack(), [router]),
     };
 }

@@ -4,9 +4,7 @@ import { PhotoContext, SyncItem } from './types';
 const QUEUE_KEY = 'drive_sync_queue_v1';
 const QUEUE_DIR = `${FileSystem.documentDirectory}sync-queue/`;
 
-// ============================================================
-// 🔑 Generador de IDs único (a nivel módulo, no dentro de otra función)
-// ============================================================
+
 function uuid(): string {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
@@ -31,9 +29,6 @@ async function saveQueue(queue: SyncItem[]) {
   await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
 }
 
-/**
- * Copia la foto a una carpeta persistente de la app y la agrega a la cola.
- */
 export async function enqueuePhoto(
   uri: string,
   description: string | undefined,
@@ -42,20 +37,19 @@ export async function enqueuePhoto(
 ): Promise<void> {
   await ensureQueueDir();
 
-  // Copia la foto a la carpeta persistente de la app
   const safeName = `${Date.now()}-${uuid()}.jpg`;
   const destUri = `${QUEUE_DIR}${safeName}`;
 
   try {
     await FileSystem.copyAsync({ from: uri, to: destUri });
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (e) {
-    console.warn('⚠️ No se pudo copiar la foto, usando la original:', e);
   }
 
   const queue = await getQueue();
 
   const item: SyncItem = {
-    id: uuid(),                                   // ✅ Llamada a la función
+    id: uuid(),
     localUri: destUri,
     filename: safeName,
     description,

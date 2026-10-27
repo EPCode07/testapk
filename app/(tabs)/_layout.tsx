@@ -1,11 +1,23 @@
 import { Tabs, usePathname } from 'expo-router';
-import { View } from 'react-native';
+import { useEffect } from 'react';
+import { Keyboard, Platform, StatusBar, View } from 'react-native'; // 👈 StatusBar de RN
 import AppBottomNav from '../../components/AppBottomNav';
 
 type TabKey = 'inicio' | 'camera_now' | 'galeria' | 'reportes' | 'ajustes' | 'sucesos';
 
 export default function TabsLayout() {
   const pathname = usePathname();
+
+  useEffect(() => {
+    Keyboard.dismiss();
+
+    if (Platform.OS === 'android') {
+      StatusBar.setHidden(false, 'fade');
+      StatusBar.setBackgroundColor('#ffffff', true);
+      StatusBar.setBarStyle('dark-content', true);
+      StatusBar.setTranslucent(false);
+    }
+  }, [pathname]);
 
   const getActiveTab = (): TabKey => {
     if (pathname.includes('galeria')) return 'galeria';
@@ -17,13 +29,15 @@ export default function TabsLayout() {
   };
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: '#ffffff' }}>
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" translucent={false} />
+
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarStyle: { display: 'none' },
           animation: 'none',
         }}
+        tabBar={() => <AppBottomNav active={getActiveTab()} />}
       >
         <Tabs.Screen name="index" />
         <Tabs.Screen name="galeria" />
@@ -32,8 +46,6 @@ export default function TabsLayout() {
         <Tabs.Screen name="mis-reportes" />
         <Tabs.Screen name="ajustes" />
       </Tabs>
-
-      <AppBottomNav active={getActiveTab()} />
     </View>
   );
 }

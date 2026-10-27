@@ -42,7 +42,7 @@ const PASOS_INICIALES: PasoDescarga[] = [
     },
     {
         id: 'actividades',
-        label: 'Obteniendo actividades...',
+        label: 'Obteniendo tareas...',
         icono: 'list-outline',
         estado: 'pendiente',
     },

@@ -12,10 +12,8 @@ export interface SyncItem {
   capturedAt: string;
   usuario?: string;
 
-  // 🔑 Contexto de la actividad (se conoce al tomar la foto)
   estacion_servicio_actividad_id?: number;
 
-  // 🔑 Datos capturados por GPS
   latitud?: number;
   longitud?: number;
   altitud?: number;

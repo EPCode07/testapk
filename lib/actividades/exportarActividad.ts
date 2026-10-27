@@ -5,7 +5,7 @@ const API_BASE = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 export type ResultadoExportacion = {
     success: boolean;
-    actividad?: { id: number; estado: string };
+    actividad?: { id: number; estado: string, es_multidia?: boolean };
     registros?: number[];
     total_fotos?: number;
     message?: string;

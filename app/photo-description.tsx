@@ -169,7 +169,7 @@ function PhotoDescribeContent({ foto }: { foto: FotoCaptura }) {
     const handleEliminar = () => {
         Alert.alert(
             'Eliminar foto',
-            'Esta foto se eliminará de la actividad. Esta acción no se puede deshacer.',
+            'Esta foto se eliminará de la tarea. Esta acción no se puede deshacer.',
             [
                 { text: 'Cancelar', style: 'cancel' },
                 {

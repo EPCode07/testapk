@@ -36,13 +36,12 @@ export default function ConfirmCambioModal({
             <View style={styles.backdrop}>
                 <View style={styles.card}>
                     <Text style={styles.title}>
-                        Cambiar a "{actividadNuevaNombre}"
+                        Cambiar a &ldquo;{actividadNuevaNombre}&rdquo;
                     </Text>
                     <Text style={styles.body}>
                         Tienes {cantidadFotos} foto{cantidadFotos > 1 ? 's' : ''} sin
-                        exportar de "{actividadActualNombre}". ¿Qué querés hacer?
+                        exportar de &ldquo;{actividadActualNombre}&rdquo;. ¿Qué querés hacer?
                     </Text>
-
                     <View style={styles.actions}>
                         <TouchableOpacity
                             style={[styles.btn, styles.btnSecondary]}
@@ -51,7 +50,7 @@ export default function ConfirmCambioModal({
                         >
                             <Ionicons name="swap-horizontal" size={18} color="#B5121B" />
                             <Text style={styles.btnSecondaryText}>
-                                Reasignar a la nueva actividad
+                                Reasignar a la nueva tarea
                             </Text>
                         </TouchableOpacity>
 

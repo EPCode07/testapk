@@ -7,12 +7,11 @@ import {
     Image,
     RefreshControl,
     ScrollView,
-    StatusBar,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -66,9 +65,11 @@ export default function GaleriaScreen() {
     });
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
-            <View style={styles.mainWrapper}>
-                <StatusBar barStyle="dark-content" backgroundColor="#ECEDEF" />
+        <SafeAreaView
+            style={{ flex: 1, backgroundColor: '#ffffffff' }}
+            edges={['top']}
+        >
+            <View style={{ backgroundColor: '#ECEDEF', flex: 1 }}>
                 <AppHeader variant="main" />
 
                 <ScrollView

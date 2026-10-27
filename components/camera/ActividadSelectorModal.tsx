@@ -49,7 +49,7 @@ export default function ActividadSelectorModal({
                 <View style={[styles.sheet, { paddingBottom: insets.bottom + 20 }]}>
 
                     <View style={styles.header}>
-                        <Text style={styles.title}>Cambiar actividad</Text>
+                        <Text style={styles.title}>Cambiar tarea</Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
                             <Ionicons name="close" size={22} color="#6B7280" />
                         </TouchableOpacity>

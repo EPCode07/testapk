@@ -38,7 +38,7 @@ const ESTADOS_CONFIG: Record<EstadoProyecto, { label: string }> = {
   completado: { label: 'Completado' },
 };
 
-const FILTROS: Array<{ key: string; label: string }> = [
+const FILTROS: { key: string; label: string }[] = [
   { key: 'todos', label: 'Todos' },
   { key: 'iniciar', label: 'Pendiente' },
   { key: 'en_progreso', label: 'En progreso' },
@@ -176,11 +176,13 @@ export default function InicioScreen() {
   });
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: '#ffffffff' }}
+      edges={['top']}
+    >
+
       <View style={{ backgroundColor: '#ECEDEF', flex: 1 }}>
-
-        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-
+        <StatusBar barStyle="dark-content" backgroundColor="#ECEDEF" />
         <AppHeader />
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -188,7 +190,6 @@ export default function InicioScreen() {
           keyboardShouldPersistTaps="handled"
         >
 
-          {/* Buscador */}
           <View style={styles.searchWrapper}>
             <Ionicons name="search-outline" size={20} color="#6B7280" />
             <TextInput
@@ -219,7 +220,6 @@ export default function InicioScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Filtros (pills) */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -242,14 +242,12 @@ export default function InicioScreen() {
             })}
           </ScrollView>
 
-          {/* Loading */}
           {cargando && (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#910E16" />
             </View>
           )}
 
-          {/* Empty */}
           {!cargando && proyectosFiltrados.length === 0 && (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyIcon}>📭</Text>
@@ -264,7 +262,6 @@ export default function InicioScreen() {
             </View>
           )}
 
-          {/* Lista */}
           {!cargando && proyectosFiltrados.length > 0 && (
             <View style={styles.listaProyectos}>
               {proyectosFiltrados.map((p) => (
@@ -283,14 +280,12 @@ export default function InicioScreen() {
   );
 }
 
-/* TarjetaProyecto se queda igual */
 function TarjetaProyecto({ proyecto, onPress }: { proyecto: Proyecto; onPress: () => void }) {
   const config = ESTADOS_CONFIG[proyecto.estado] ?? ESTADOS_CONFIG.iniciar;
   const foto = proyecto.foto_url || FOTO_DEFAULT;
 
   return (
     <View style={styles.card}>
-      {/* HEADER: nombre + estado + icono + flecha clickeable */}
       <View style={styles.cardHeader}>
         <View style={styles.cardHeaderLeft}>
           <Text style={styles.cardNombre} numberOfLines={1}>
@@ -303,17 +298,17 @@ function TarjetaProyecto({ proyecto, onPress }: { proyecto: Proyecto; onPress: (
           <EstadoIcon estado={proyecto.estado} size={18} strokeWidth={2} />
         </View>
 
-        {/* 👇 Solo la flecha navega */}
-        <TouchableOpacity
-          onPress={onPress}
-          hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-          style={styles.arrowBtn}
-        >
-          <Ionicons name="arrow-forward" size={22} color="#111827" />
-        </TouchableOpacity>
+        {proyecto.estado !== 'iniciar' && (
+          <TouchableOpacity
+            onPress={onPress}
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+            style={styles.arrowBtn}
+          >
+            <Ionicons name="arrow-forward" size={22} color="#111827" />
+          </TouchableOpacity>
+        )}
       </View>
 
-      {/* BODY: foto + datos (no clickeable) */}
       <View style={styles.cardBody}>
         <Image source={{ uri: foto }} style={styles.cardFoto} resizeMode="cover" />
         <View style={styles.cardDatos}>
@@ -334,7 +329,6 @@ function TarjetaProyecto({ proyecto, onPress }: { proyecto: Proyecto; onPress: (
         </View>
       </View>
 
-      {/* FOOTER: progreso */}
       <View style={styles.progresoContainer}>
         <Text style={styles.progresoTexto}>{proyecto.progreso}% Completado</Text>
         <View style={styles.progresoBarra}>

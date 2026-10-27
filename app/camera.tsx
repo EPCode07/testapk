@@ -394,7 +394,7 @@ export default function CameraScreen() {
                 onToggleTimer={() => setTimerSeconds((prev) => (prev === 0 ? 3 : 0))}
                 flash={flash}
                 onToggleFlash={toggleFlash}
-                actividadNombre={actividadActual?.nombre ?? 'Sin actividad'}
+                actividadNombre={actividadActual?.nombre ?? 'Sin tarea'}
                 onPressActividad={() => setSelectorVisible(true)}
             />
 
