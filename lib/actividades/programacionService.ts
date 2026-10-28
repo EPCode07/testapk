@@ -38,7 +38,7 @@ export const programacionService = {
       },
     );
     const json = await res.json();
-    if (!res.ok || !json.success) throw new Error(json.message ?? "Error");
+    if (!res.ok || !json.success) throw new Error(json.message ?? "Error al listar actividades");
     return { data: json.data, extras: json.extras ?? [], manana: json.manana };
   },
 
@@ -54,7 +54,7 @@ export const programacionService = {
       body: JSON.stringify({ actividad_ids: actividadIds, fecha }),
     });
     const json = await res.json();
-    if (!res.ok || !json.success) throw new Error(json.message ?? "Error");
+    if (!res.ok || !json.success) throw new Error(json.message ?? "Error al programar");
   },
 
   async crearActividad(data: {
@@ -74,11 +74,13 @@ export const programacionService = {
       },
       body: JSON.stringify(data),
     });
-    [];
+
     const json = await res.json();
-    if (!res.ok || !json.success) throw new Error(json.message ?? "Error");
+    if (!res.ok || !json.success) throw new Error(json.message ?? "Error al crear actividad");
+
     return json.actividad;
   },
+
   async listarServicios(
     estacionId: number,
   ): Promise<{ id: number; nombre: string }[]> {
@@ -93,17 +95,19 @@ export const programacionService = {
       },
     );
     const json = await res.json();
-    if (!res.ok || !json.success) throw new Error(json.message ?? "Error");
+    if (!res.ok || !json.success) throw new Error(json.message ?? "Error al listar servicios");
     return json.data;
   },
+
   async sugerenciaAvance(actividadId: number): Promise<SugerenciaAvance> {
     const token = await getToken();
     const res = await fetch(`${BASE_URL}/api/actividades/${actividadId}/avance-sugerido`,
       { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } });
     const json = await res.json();
-    if (!res.ok || !json.success) throw new Error(json.message ?? 'Error');
+    if (!res.ok || !json.success) throw new Error(json.message ?? 'Error al obtener sugerencia');
     return json;
   },
+
   async registrarAvance(actividadId: number, p: { avance?: number; completar?: boolean }): Promise<void> {
     const token = await getToken();
     const res = await fetch(`${BASE_URL}/api/actividades/${actividadId}/avance`, {
@@ -112,6 +116,6 @@ export const programacionService = {
       body: JSON.stringify(p),
     });
     const json = await res.json();
-    if (!res.ok || !json.success) throw new Error(json.message ?? 'Error');
+    if (!res.ok || !json.success) throw new Error(json.message ?? 'Error al registrar avance');
   },
 };

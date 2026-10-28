@@ -392,7 +392,7 @@ export default function ProgramarMananaScreen() {
                                 multiline
                             />
 
-                            <Text style={styles.inputLabel}>Actividad *</Text>
+                            <Text style={styles.inputLabel}>Selecciona la actividad relacionada *</Text>
                             {servicios.length === 0 ? (
                                 <View style={styles.noServicios}>
                                     <Ionicons name="alert-circle-outline" size={18} color="#B45309" />
