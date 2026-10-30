@@ -111,6 +111,9 @@ export default function UploadPhotoScreen() {
         setProcessing(true);
 
         try {
+
+            await cargarActividadEnCurso(Number(estacion_servicio_actividad_id));
+
             const urisToProcess = [...selectedImages];
 
             for (const uri of urisToProcess) {

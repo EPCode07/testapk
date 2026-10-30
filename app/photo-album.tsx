@@ -108,7 +108,8 @@ export default function PhotoAlbumScreen() {
     }, []);
 
     useEffect(() => {
-        if (targetId && !isNaN(targetId) && actividadEnCurso?.estacionServicioActividadId !== targetId) {
+        const currentId = Number(actividadEnCurso?.estacionServicioActividadId);
+        if (targetId && !isNaN(targetId) && currentId !== targetId) {
             cargarActividadEnCurso(targetId).catch((err) => {
                 console.error("Error al cargar la tarea en el álbum:", err);
             });
