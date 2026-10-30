@@ -3,13 +3,19 @@
     "name": "Yhoma Reportes",
     "slug": "yhoma-reportes",
     "version": "1.0.0",
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "yhomareportes",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSSpeechRecognitionUsageDescription": "Permite a $(PRODUCT_NAME) usar el reconocimiento de voz para transcribir tus búsquedas.",
+        "NSMicrophoneUsageDescription": "Permite a $(PRODUCT_NAME) acceder al micrófono para el dictado por voz."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -19,15 +25,19 @@
       "predictiveBackGestureEnabled": false,
       "package": "pe.yhoma.reportes",
       "permissions": [
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
-        "POST_NOTIFICATIONS",
-        "RECEIVE_BOOT_COMPLETED",
-        "USE_BIOMETRIC",
-        "USE_FINGERPRINT",
-        "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+        "android.permission.ACCESS_MEDIA_LOCATION",
+        "android.permission.READ_MEDIA_IMAGES"
       ]
     },
     "web": {
@@ -82,7 +92,9 @@
           "photosPermission": "Permitir a $(PRODUCT_NAME) acceder a tus fotos.",
           "savePhotosPermission": "Permitir a $(PRODUCT_NAME) guardar fotos.",
           "isAccessMediaLocationEnabled": true,
-          "granularPermissions": ["photo"]
+          "granularPermissions": [
+            "photo"
+          ]
         }
       ],
       [
@@ -110,9 +122,11 @@
       "reactCompiler": true
     },
     "extra": {
-      "router": {},
+      "router": {
+        "origin": "yhomareportes://"
+      },
       "eas": {
-        "projectId": "675f1024-48be-4327-8cb7-1afe6f0b50b3"
+        "projectId": "9bd64c3c-16d0-48b2-9e27-0902a977b40c"
       }
     }
   }
