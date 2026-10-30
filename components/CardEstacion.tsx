@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
     ScrollView,
@@ -8,9 +9,11 @@ import {
     View,
 } from 'react-native';
 import { ActividadDetalle, EstacionDetalle } from '../lib/proyectos/proyectoService';
+import { ModalSupervisores } from './ModalSupervisores';
 
 interface Props {
     estacion: EstacionDetalle;
+    onRefrescar: () => void;
     onActividadPress: (
         estacionServicioActividadId: number,
         actividadNombre: string,
@@ -18,8 +21,9 @@ interface Props {
     ) => void;
 }
 
-export default function CardEstacion({ estacion, onActividadPress }: Props) {
+export default function CardEstacion({ estacion, onRefrescar, onActividadPress }: Props) {
     const [expandida, setExpandida] = useState(true);
+    const [modalSupervisores, setModalSupervisores] = useState(false);
 
     const todasActividades: ActividadDetalle[] = estacion.servicios.flatMap(
         (s) => s.actividades
@@ -47,6 +51,19 @@ export default function CardEstacion({ estacion, onActividadPress }: Props) {
                     />
                 </TouchableOpacity>
             </View>
+
+            {expandida && (
+                <TouchableOpacity
+                    style={styles.btnSupervisores}
+                    onPress={() => setModalSupervisores(true)}
+                    activeOpacity={0.7}
+                >
+                    <Ionicons name="people" size={16} color="#910E16" />
+                    <Text style={styles.btnSupervisoresText}>
+                        Supervisores de Unidad Minera ({estacion.supervisores_externos?.length || 0})
+                    </Text>
+                </TouchableOpacity>
+            )}
 
             {expandida && (
                 <ScrollView
@@ -78,6 +95,14 @@ export default function CardEstacion({ estacion, onActividadPress }: Props) {
                 </View>
                 <Text style={styles.progresoTexto}>{estacion.progreso}% Completado</Text>
             </View>
+
+            <ModalSupervisores
+                visible={modalSupervisores}
+                estacionId={estacion.id}
+                onClose={() => setModalSupervisores(false)}
+                onGuardadoExitoso={onRefrescar}
+            />
+
         </View>
     );
 }
@@ -93,10 +118,12 @@ function ActividadItem({
 }) {
     const estadoConfig = getEstadoConfig(actividad.estado);
     const estadoDopConfig = getEstadoDop(actividad.estado);
+    const esObservacion = actividad.tipo === 'observacion';
+    const router = useRouter();
 
     return (
         <TouchableOpacity
-            style={styles.itemRow}
+            style={[styles.itemRow, esObservacion && { backgroundColor: '#FEF2F2', borderRadius: 8, marginBottom: 4 }]}
             onPress={onPress}
             activeOpacity={0.7}
         >
@@ -110,6 +137,18 @@ function ActividadItem({
                     {actividad.nombre}
                 </Text>
             </View>
+
+            <TouchableOpacity
+                style={{ padding: 8, marginRight: 8, backgroundColor: '#F3F4F6', borderRadius: 8 }}
+                onPress={() => {
+                    router.push({
+                        pathname: '/upload-photo',
+                        params: { estacion_servicio_actividad_id: actividad.id }
+                    });
+                }}
+            >
+                <Ionicons name="cloud-upload-outline" size={20} color="#910E16" />
+            </TouchableOpacity>
 
             <View style={styles.itemIcon}>
                 {estadoConfig.icono === 'check' && (
@@ -242,5 +281,22 @@ const styles = StyleSheet.create({
         fontFamily: 'Poppins-Regular',
         fontSize: 11,
         marginTop: 6,
+    },
+    btnSupervisores: {
+        flexDirection: 'row',
+        width: '100%',
+        alignItems: 'center',
+        backgroundColor: '#FFF0F1',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        alignSelf: 'flex-start',
+        marginBottom: 12,
+        gap: 6,
+    },
+    btnSupervisoresText: {
+        color: '#910E16',
+        fontFamily: 'Poppins-SemiBold',
+        fontSize: 13,
     },
 });

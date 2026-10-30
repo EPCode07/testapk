@@ -63,6 +63,8 @@ export const programacionService = {
     descripcion?: string;
     estacion_servicio_id: number;
     programada_para?: string;
+    seleccionada?: number;
+    es_extra?: number;
   }): Promise<ActividadProgramable> {
     const token = await getToken();
     const res = await fetch(`${BASE_URL}/api/actividades`, {

@@ -9,11 +9,11 @@ export type ActividadEnCurso = {
     nombreActividad: string;
     descripcionGeneral?: string;
     conforme?: boolean;
-    estado: EstadoActividad;   // 👈 tipo ampliado
+    estado: EstadoActividad;
     creadoEn: number;
     exportadoEn: number | null;
-    intentosSubida?: number;   // 👈 nuevo: para backoff
-    ultimoErrorSubida?: string | null;   // 👈 nuevo
+    intentosSubida?: number;
+    ultimoErrorSubida?: string | null;
     fotos: FotoCaptura[];
 };
 
@@ -29,5 +29,5 @@ export type FotoCaptura = {
     timestamp: string;
     direccion?: string;
     ubicacionTexto?: string;
-    subidaAlServidor?: boolean;   // 👈 NUEVO
+    subidaAlServidor?: boolean;
 };

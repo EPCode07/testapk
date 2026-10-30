@@ -25,11 +25,16 @@ import { useSync } from '../lib/sync/SyncContext';
 import AvanceSheet, { SugerenciaAvance } from '@/components/AvanceSheet';
 import SucesoModal from '@/components/sucesos/SucesoModal';
 import { programacionService } from '@/lib/actividades/programacionService';
+import { useLocalSearchParams } from 'expo-router';
 import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
+import { actividadStorage } from '../lib/actividades/actividadStorage'; // <-- IMPORTA ESTO ARRIBA
+
 
 export default function PhotoAlbumScreen() {
     const router = useSafeNavigate();
     const inputRef = useRef<TextInput>(null);
+    const { id } = useLocalSearchParams<{ id?: string }>();
+    const targetId = id ? Number(id) : null;
 
     const [sucesoModalVisible, setSucesoModalVisible] = useState(false);
     const [esperandoConfirmacionSuceso, setEsperandoConfirmacionSuceso] = useState(false);
@@ -41,6 +46,8 @@ export default function PhotoAlbumScreen() {
         descartarActividadEnCurso,
         proyectoId,
         marcarFotosSubidas,
+        cargarActividadEnCurso,
+
     } = useActividad();
 
     const { addExportacionToQueue } = useSync();
@@ -99,6 +106,14 @@ export default function PhotoAlbumScreen() {
             subResult.remove();
         };
     }, []);
+
+    useEffect(() => {
+        if (targetId && !isNaN(targetId) && actividadEnCurso?.estacionServicioActividadId !== targetId) {
+            cargarActividadEnCurso(targetId).catch((err) => {
+                console.error("Error al cargar la tarea en el álbum:", err);
+            });
+        }
+    }, [targetId, actividadEnCurso?.estacionServicioActividadId, cargarActividadEnCurso]);
 
     const contextoActividad: SeleccionContexto | null = actividadEnCurso
         ? {
@@ -184,38 +199,39 @@ export default function PhotoAlbumScreen() {
         );
     };
 
+    // Si aún no hay actividad en curso, mostramos el spinner
     if (!actividadEnCurso) {
         return (
             <SafeAreaView style={styles.container}>
                 <StatusBar barStyle="dark-content" />
                 <View style={styles.emptyWrapper}>
-                    <Text style={styles.emptyText}>No hay tarea en curso</Text>
-                    <TouchableOpacity
-                        style={styles.backPill}
-                        onPress={() => {
-                            if (router.canGoBack()) {
-                                router.back();
-                            } else {
-                                router.replace('/(tabs)' as any);
-                            }
-                        }}
-                    >
-                        <Text style={styles.backPillText}>Volver</Text>
-                    </TouchableOpacity>
+                    <ActivityIndicator size="large" color="#B5121B" />
+                    <Text style={[styles.emptyText, { marginTop: 12 }]}>
+                        Cargando fotos de la tarea...
+                    </Text>
                 </View>
             </SafeAreaView>
         );
     }
-
     const irAProyectoDetalle = () => {
-        if (proyectoId) {
-            router.dismissTo({
-                pathname: '/proyecto/[id]',
-                params: { id: String(proyectoId) },
-            });
+        if (router.canGoBack()) {
+            if (proyectoId) {
+                router.dismissTo({
+                    pathname: '/proyecto/[id]',
+                    params: { id: String(proyectoId) },
+                });
+            } else {
+                router.dismissAll();
+            }
         } else {
-            router.dismissAll();
-            router.replace('/(tabs)' as any);
+            if (proyectoId) {
+                router.replace({
+                    pathname: '/proyecto/[id]',
+                    params: { id: String(proyectoId) },
+                });
+            } else {
+                router.replace('/(tabs)' as any);
+            }
         }
     };
 
@@ -325,36 +341,30 @@ export default function PhotoAlbumScreen() {
         if (exportando) return;
 
         if (!conforme) {
-            Alert.alert(
-                'Falta confirmación',
-                'Debes marcar la tarea como Conforme u Observada antes de exportar.'
-            );
-            return;
-        }
-
-        const fotosNuevas = actividadEnCurso.fotos.filter((f) => !f.subidaAlServidor);
-
-        if (fotosNuevas.length === 0) {
-            if (
-                actividadEnCurso.estado === 'exportada' ||
-                actividadEnCurso.estado === 'pendiente_subida'
-            ) {
-                Alert.alert(
-                    'Sin cambios',
-                    'No hay fotos nuevas para subir. Todos los registros ya están en el servidor.'
-                );
-                return;
-            }
-            Alert.alert(
-                'Sin fotos',
-                'Debes tomar al menos una foto antes de exportar.'
-            );
+            Alert.alert('Falta confirmación', 'Debes Guardar antes de exportar.');
             return;
         }
 
         setExportando(true);
         try {
             await actualizarDescripcionGeneral(descripcion, conforme);
+
+            // 🔥 LA SOLUCIÓN: Leemos la actividad directo del disco (con las descripciones guardadas)
+            const actividadFresca = await actividadStorage.obtener(actividadEnCurso.idLocal);
+            const fotosFrescas = actividadFresca?.fotos || actividadEnCurso.fotos;
+
+            const fotosNuevas = fotosFrescas.filter((f) => !f.subidaAlServidor);
+
+            if (fotosNuevas.length === 0) {
+                if (actividadEnCurso.estado === 'exportada' || actividadEnCurso.estado === 'pendiente_subida') {
+                    Alert.alert('Sin cambios', 'No hay fotos nuevas para subir. Todos los registros ya están en el servidor.');
+                    setExportando(false);
+                    return;
+                }
+                Alert.alert('Sin fotos', 'Debes tomar al menos una foto antes de exportar.');
+                setExportando(false);
+                return;
+            }
 
             for (const foto of fotosNuevas) {
                 try {
@@ -364,6 +374,7 @@ export default function PhotoAlbumScreen() {
                 }
             }
 
+            // Armamos el paquete con las fotos frescas del disco
             const actividadParaEnviar = {
                 ...actividadEnCurso,
                 descripcionGeneral: descripcion,
@@ -376,8 +387,7 @@ export default function PhotoAlbumScreen() {
             if (!resultado.success) {
                 await addExportacionToQueue({
                     actividadLocalId: actividadEnCurso.idLocal,
-                    estacionServicioActividadId:
-                        actividadEnCurso.estacionServicioActividadId,
+                    estacionServicioActividadId: actividadEnCurso.estacionServicioActividadId,
                     estacionId: actividadEnCurso.estacionId,
                     proyectoId: actividadEnCurso.proyectoId,
                     totalFotos: fotosNuevas.length,
@@ -415,7 +425,6 @@ export default function PhotoAlbumScreen() {
             setExportando(false);
         }
     };
-
 
 
     return (
@@ -578,7 +587,7 @@ export default function PhotoAlbumScreen() {
                                 conforme === true && styles.decisionTextActive,
                             ]}
                         >
-                            Conforme
+                            Guardar
                         </Text>
                     </TouchableOpacity>
 

@@ -38,11 +38,9 @@ function fusionarDuplicados(todas: ActividadEnCurso[]): ActividadEnCurso[] {
             continue;
         }
 
-        // Ordenar por creadoEn DESC
         const ordenadas = [...acts].sort((a, b) => b.creadoEn - a.creadoEn);
         const base: ActividadEnCurso = { ...ordenadas[0] };
 
-        // Fusionar fotos
         const fotosMap = new Map<string, FotoCaptura>();
         for (const act of ordenadas) {
             for (const foto of act.fotos) {
@@ -51,7 +49,6 @@ function fusionarDuplicados(todas: ActividadEnCurso[]): ActividadEnCurso[] {
         }
         base.fotos = Array.from(fotosMap.values());
 
-        // Heredar exportada
         const exportada = ordenadas.find(
             (a) => a.estado === 'exportada' || a.estado === 'pendiente_subida'
         );
@@ -60,7 +57,6 @@ function fusionarDuplicados(todas: ActividadEnCurso[]): ActividadEnCurso[] {
             base.exportadoEn = exportada.exportadoEn;
         }
 
-        // Heredar descripción
         if (!base.descripcionGeneral) {
             const conDesc = ordenadas.find(
                 (a) => (a.descripcionGeneral ?? '').length > 0
@@ -68,7 +64,6 @@ function fusionarDuplicados(todas: ActividadEnCurso[]): ActividadEnCurso[] {
             if (conDesc) base.descripcionGeneral = conDesc.descripcionGeneral;
         }
 
-        // Heredar conforme
         if (base.conforme == null) {
             const conConf = ordenadas.find((a) => a.conforme != null);
             if (conConf) base.conforme = conConf.conforme;
@@ -89,7 +84,6 @@ export const actividadStorage = {
         }
         return limpias;
     },
-
 
     async listarBorradores(): Promise<ActividadEnCurso[]> {
         const todas = await leer();
@@ -112,7 +106,6 @@ export const actividadStorage = {
         );
     },
 
-
     async crear(data: {
         estacionServicioActividadId: number;
         proyectoId: number;
@@ -121,7 +114,6 @@ export const actividadStorage = {
     }): Promise<ActividadEnCurso> {
         const todas = await leer();
 
-        // 🔑 Buscar por CUALQUIER estado, no solo borrador
         const existente = todas.find(
             (a) => a.estacionServicioActividadId === data.estacionServicioActividadId
         );
@@ -147,7 +139,6 @@ export const actividadStorage = {
         return nueva;
     },
 
-
     async agregarFoto(
         idLocal: string,
         foto: Omit<FotoCaptura, 'idLocal'>
@@ -158,7 +149,6 @@ export const actividadStorage = {
 
         const idFoto = uuid();
 
-        // 🔑 Copiar el archivo de cache/ a documentDirectory/ (persistente)
         const dirActividad = `${FileSystem.documentDirectory}actividades/${idLocal}/`;
         const info = await FileSystem.getInfoAsync(dirActividad);
         if (!info.exists) {
@@ -189,18 +179,29 @@ export const actividadStorage = {
         await escribir(todas);
         return nuevaFoto;
     },
-
     async actualizarFoto(
         idActividadLocal: string,
         idFotoLocal: string,
         patch: Partial<FotoCaptura>
     ): Promise<void> {
         const todas = await leer();
+
+        // 🔍 RASTREO
+        console.log("📂 [STORAGE] Buscando Actividad ID:", idActividadLocal);
         const idx = todas.findIndex((a) => a.idLocal === idActividadLocal);
-        if (idx === -1) return;
+
+        if (idx === -1) {
+            console.log("❌ [STORAGE] Actividad no encontrada. IDs disponibles:", todas.map(a => a.idLocal));
+            return;
+        }
 
         const fotoIdx = todas[idx].fotos.findIndex((f) => f.idLocal === idFotoLocal);
-        if (fotoIdx === -1) return;
+        if (fotoIdx === -1) {
+            console.log("❌ [STORAGE] Foto no encontrada. IDs disponibles:", todas[idx].fotos.map(f => f.idLocal));
+            return;
+        }
+
+        console.log("✅ [STORAGE] Guardando datos exitosamente:", patch);
 
         todas[idx].fotos[fotoIdx] = {
             ...todas[idx].fotos[fotoIdx],
@@ -254,9 +255,6 @@ export const actividadStorage = {
         await escribir(todas.filter((a) => a.estado !== 'exportada'));
     },
 
-    /**
- * Marca una lista de fotos como subidas al servidor.
- */
     async marcarFotosSubidas(
         idActividadLocal: string,
         idsFotos: string[]
@@ -271,15 +269,10 @@ export const actividadStorage = {
         await escribir(todas);
     },
 
-    /**
- * Elimina actividades duplicadas del mismo estacionServicioActividadId.
- * Se queda con la más reciente y las marca como 'exportada' si alguna lo era.
- */
     async limpiarDuplicados(): Promise<number> {
         const todas = await leer();
         const grupos = new Map<number, ActividadEnCurso[]>();
 
-        // Agrupar por estacionServicioActividadId
         for (const act of todas) {
             const key = act.estacionServicioActividadId;
             if (!grupos.has(key)) grupos.set(key, []);
@@ -295,13 +288,10 @@ export const actividadStorage = {
                 continue;
             }
 
-            // Hay duplicados: ordenar por creadoEn DESC
             const ordenadas = [...acts].sort((a, b) => b.creadoEn - a.creadoEn);
 
-            // La más reciente es la "base"
             const base = ordenadas[0];
 
-            // Fusionar fotos de todas las demás
             const fotosMap = new Map<string, any>();
             for (const act of ordenadas) {
                 for (const foto of act.fotos) {
@@ -310,7 +300,6 @@ export const actividadStorage = {
             }
             base.fotos = Array.from(fotosMap.values());
 
-            // Si alguna estaba exportada o tenía descripción, heredar
             const exportada = ordenadas.find(
                 (a) => a.estado === 'exportada' || a.estado === 'pendiente_subida'
             );
@@ -338,6 +327,4 @@ export const actividadStorage = {
         await escribir(limpias);
         return eliminados;
     },
-
-
 };

@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { CacheMetadata, proyectoCache } from './proyectoCache';
 import { Proyecto, proyectoService } from './proyectoService';
 
-// 👇 Tipo derivado del glyphMap: solo acepta nombres de iconos válidos de Ionicons
 export type NombreIcono = keyof typeof Ionicons.glyphMap;
 
 export type PasoDescarga = {
@@ -149,7 +148,6 @@ export async function descargarTodo(
         const proyectosConError: number[] = [];
 
         if (proyectos.length > 0) {
-            // Marcar los tres pasos como en progreso al inicio
             marcarPaso(
                 'estaciones',
                 'en_progreso',
@@ -185,7 +183,7 @@ export async function descargarTodo(
                         actividadesCount += s.actividades?.length ?? 0;
                     });
 
-                    const sups = (est as any).supervisores_externos;
+                    const sups = est.supervisores_externos;
                     if (Array.isArray(sups)) {
                         supervisoresCount += sups.length;
                     }

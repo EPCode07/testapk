@@ -3,6 +3,14 @@ import { ExportacionItem } from './types';
 
 const KEY = '@exportaciones_pendientes';
 
+// 🔥 SISTEMA DE CANDADO PARA EVITAR SOBREESCRITURAS
+let writePromise = Promise.resolve();
+function withLock<T>(fn: () => Promise<T>): Promise<T> {
+    const result = writePromise.then(fn);
+    writePromise = result.then(() => { }, () => { });
+    return result;
+}
+
 function uuid(): string {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
         const r = (Math.random() * 16) | 0;
@@ -47,59 +55,67 @@ export const exportacionesStorage = {
         proyectoId: number;
         totalFotos: number;
     }): Promise<ExportacionItem> {
-        const todas = await leer();
+        return withLock(async () => {
+            const todas = await leer();
+            const existente = todas.find((e) => e.actividadLocalId === data.actividadLocalId);
+            if (existente) return existente;
 
-        // Evitar duplicados
-        const existente = todas.find((e) => e.actividadLocalId === data.actividadLocalId);
-        if (existente) return existente;
+            const nueva: ExportacionItem = {
+                id: uuid(),
+                actividadLocalId: data.actividadLocalId,
+                estacionServicioActividadId: data.estacionServicioActividadId,
+                estacionId: data.estacionId,
+                proyectoId: data.proyectoId,
+                totalFotos: data.totalFotos,
+                intentos: 0,
+                ultimoIntento: null,
+                ultimoError: null,
+                creadoEn: Date.now(),
+                estado: 'pendiente',
+            };
 
-        const nueva: ExportacionItem = {
-            id: uuid(),
-            actividadLocalId: data.actividadLocalId,
-            estacionServicioActividadId: data.estacionServicioActividadId,
-            estacionId: data.estacionId,
-            proyectoId: data.proyectoId,
-            totalFotos: data.totalFotos,
-            intentos: 0,
-            ultimoIntento: null,
-            ultimoError: null,
-            creadoEn: Date.now(),
-            estado: 'pendiente',
-        };
-
-        todas.push(nueva);
-        await escribir(todas);
-        return nueva;
+            todas.push(nueva);
+            await escribir(todas);
+            return nueva;
+        });
     },
 
     async marcarError(id: string, mensaje: string): Promise<void> {
-        const todas = await leer();
-        const idx = todas.findIndex((e) => e.id === id);
-        if (idx === -1) return;
+        return withLock(async () => {
+            const todas = await leer();
+            const idx = todas.findIndex((e) => e.id === id);
+            if (idx === -1) return;
 
-        todas[idx].intentos += 1;
-        todas[idx].ultimoIntento = Date.now();
-        todas[idx].ultimoError = mensaje;
-        todas[idx].estado = 'error';
-        await escribir(todas);
+            todas[idx].intentos += 1;
+            todas[idx].ultimoIntento = Date.now();
+            todas[idx].ultimoError = mensaje;
+            todas[idx].estado = 'error';
+            await escribir(todas);
+        });
     },
 
     async marcarPendiente(id: string): Promise<void> {
-        const todas = await leer();
-        const idx = todas.findIndex((e) => e.id === id);
-        if (idx === -1) return;
+        return withLock(async () => {
+            const todas = await leer();
+            const idx = todas.findIndex((e) => e.id === id);
+            if (idx === -1) return;
 
-        todas[idx].estado = 'pendiente';
-        todas[idx].ultimoError = null;
-        await escribir(todas);
+            todas[idx].estado = 'pendiente';
+            todas[idx].ultimoError = null;
+            await escribir(todas);
+        });
     },
 
     async eliminar(id: string): Promise<void> {
-        const todas = await leer();
-        await escribir(todas.filter((e) => e.id !== id));
+        return withLock(async () => {
+            const todas = await leer();
+            await escribir(todas.filter((e) => e.id !== id));
+        });
     },
 
     async limpiar(): Promise<void> {
-        await escribir([]);
+        return withLock(async () => {
+            await escribir([]);
+        });
     },
 };

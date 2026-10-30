@@ -4,6 +4,7 @@ import { Proyecto, ProyectoDetalle } from './proyectoService';
 const LISTA_KEY = '@proyectos_lista_cache';
 const DETALLE_KEY = (id: number) => `@proyecto_detalle_${id}`;
 const META_KEY = '@proyectos_cache_meta';
+const SUPERVISORES_KEY = (estacionId: number) => `@supervisores_estacion_${estacionId}`;
 
 type CacheEntry<T> = {
     data: T;
@@ -45,6 +46,22 @@ export const proyectoCache = {
             const raw = await AsyncStorage.getItem(DETALLE_KEY(id));
             if (!raw) return null;
             const entry: CacheEntry<ProyectoDetalle> = JSON.parse(raw);
+            return entry.data;
+        } catch {
+            return null;
+        }
+    },
+
+    async guardarSupervisoresCache(estacionId: number, data: any): Promise<void> {
+        const entry = { data, ts: Date.now() };
+        await AsyncStorage.setItem(SUPERVISORES_KEY(estacionId), JSON.stringify(entry));
+    },
+
+    async leerSupervisoresCache(estacionId: number): Promise<any | null> {
+        try {
+            const raw = await AsyncStorage.getItem(SUPERVISORES_KEY(estacionId));
+            if (!raw) return null;
+            const entry = JSON.parse(raw);
             return entry.data;
         } catch {
             return null;

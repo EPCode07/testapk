@@ -57,6 +57,7 @@ export default function RootLayout() {
                 <Stack.Screen name="programar-manana" />
                 <Stack.Screen name="galeria/proyecto/[id]" />
                 <Stack.Screen name="galeria/estacion/[id]" />
+                <Stack.Screen name="upload-photo" />
               </Stack>
               <ReauthPrompt />
               <Flash />

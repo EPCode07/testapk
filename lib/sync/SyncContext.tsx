@@ -1,19 +1,21 @@
+
 import NetInfo from '@react-native-community/netinfo';
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { actividadStorage } from '../actividades/actividadStorage';
 import { exportarActividadAlServidor } from '../actividades/exportarActividad';
-import { exportarUnaVez } from '../actividades/exportarSeguro';
+import { programacionService } from '../actividades/programacionService';
+import { tareasStorage } from '../actividades/tareasStorage';
 import { exportacionesStorage } from '../exportaciones/exportacionesStorage';
+import { supervisoresStorage } from '../exportaciones/supervisoresStorage';
 import { ExportacionItem } from '../exportaciones/types';
 import { authService } from '../user/authService';
+
 import { getUsuario } from '../user/userStorage';
 import { notifySyncFinished, notifySyncStarted, requestNotificationPermissions } from './notifications';
 import { enqueuePhoto, getPendingItems, getQueue, removeItem, updateItem } from './storageQueue';
 import { syncPreferences } from './syncPreferences';
 import { PhotoContext, SyncItem } from './types';
 import { uploadItem } from './uploadService';
-
-
 interface SyncContextValue {
   queue: SyncItem[];
   exportacionesQueue: ExportacionItem[];
@@ -24,6 +26,7 @@ interface SyncContextValue {
   refreshQueue: () => Promise<void>;
   refreshExportaciones: () => Promise<void>;
   syncNow: (force?: boolean) => Promise<void>;
+  syncTareasNow: () => Promise<void>;
   syncExportacionesNow: (force?: boolean) => Promise<void>;
   addPhotoToQueue: (
     uri: string,
@@ -40,6 +43,13 @@ interface SyncContextValue {
   reintentarExportacion: (id: string) => Promise<void>;
 }
 
+// ✅ DESPUÉS (Con la coma)
+const withTimeout = <T,>(promise: Promise<T>, ms: number, timeoutError: string): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(timeoutError)), ms))
+  ]);
+};
 const SyncContext = createContext<SyncContextValue | null>(null);
 
 export function SyncProvider({ children }: { children: React.ReactNode }) {
@@ -47,6 +57,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const [exportacionesQueue, setExportacionesQueue] = useState<ExportacionItem[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
+  const syncingTareasRef = useRef(false);
 
   const syncingRef = useRef(false);
   const syncingExpRef = useRef(false);
@@ -89,6 +100,70 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     return state.type === 'wifi';
   }, []);
 
+  const syncSupervisoresNow = useCallback(async () => {
+    const pendientes = await supervisoresStorage.listarPendientes();
+    if (pendientes.length === 0) return;
+
+    for (const item of pendientes) {
+      try {
+        const token = await authService.getToken();
+        const res = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/api/estaciones/${item.estacionId}/supervisores`, {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ supervisores_ids: item.supervisoresIds }),
+        });
+
+        if (res.ok) {
+          await supervisoresStorage.eliminar(item.id);
+        }
+      } catch (e) {
+        console.log("Aún sin internet para supervisores, se reintentará luego.");
+      }
+    }
+  }, []);
+
+  const syncTareasNow = useCallback(async () => {
+    if (syncingTareasRef.current) return;
+    syncingTareasRef.current = true;
+
+    try {
+      let hasMore = true;
+      const procesados = new Set<string>();
+
+      while (hasMore) {
+        const pendientes = (await tareasStorage.listar())
+          .filter(t => !procesados.has(t.id));
+
+        if (pendientes.length === 0) {
+          hasMore = false;
+          break;
+        }
+
+        for (const t of pendientes) {
+          procesados.add(t.id);
+          try {
+            await programacionService.crearActividad({
+              nombre: t.nombre,
+              tipo: 'observacion',
+              descripcion: t.descripcion,
+              estacion_servicio_id: t.estacionServicioId,
+              seleccionada: t.seleccionada,
+              es_extra: t.es_extra,
+            });
+
+            await tareasStorage.eliminar(t.id);
+          } catch (err) {
+            console.log("Error enviando tarea, se queda en cola", err);
+          }
+        }
+      }
+    } finally {
+      syncingTareasRef.current = false;
+    }
+  }, []);
   // ============ SYNC DE FOTOS SUELTAS (cola legacy) ============
 
   const syncNow = useCallback(
@@ -143,6 +218,71 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
 
   // ============ SYNC DE EXPORTACIONES (cola nueva) ============
 
+  // const syncExportacionesNow = useCallback(
+  //   async (force: boolean = false) => {
+  //     if (syncingExpRef.current) return;
+  //     syncingExpRef.current = true;
+  //     let started = false;
+
+  //     try {
+  //       const net = await NetInfo.fetch();
+  //       if (!(await authService.hasRealSession())) return;
+  //       if (!force && !(await canSyncWithNetwork(net))) return;
+
+  //       const pendientes = await exportacionesStorage.listarPendientes();
+  //       if (pendientes.length === 0) return;
+
+  //       beginSync();
+  //       started = true;
+  //       await notifySyncStarted(pendientes.length);
+
+  //       let ok = 0;
+  //       let failed = 0;
+
+  //       for (const item of pendientes) {
+  //         try {
+  //           const actividad = await actividadStorage.obtener(item.actividadLocalId);
+  //           if (!actividad) {
+  //             await exportacionesStorage.eliminar(item.id);
+  //             await refreshExportaciones();
+  //             continue;
+  //           }
+
+  //           const resultado = await exportarUnaVez(
+  //             item.estacionServicioActividadId,
+  //             () => exportarActividadAlServidor(actividad)
+  //           );
+
+  //           if (!resultado.success) {
+  //             await exportacionesStorage.marcarError(
+  //               item.id,
+  //               resultado.message ?? 'Error desconocido'
+  //             );
+  //             failed += 1;
+  //           } else {
+  //             await actividadStorage.marcarExportada(item.actividadLocalId);
+  //             await exportacionesStorage.eliminar(item.id);
+  //             ok += 1;
+  //           }
+  //         } catch (err: any) {
+  //           failed += 1;
+  //           await exportacionesStorage.marcarError(
+  //             item.id,
+  //             err?.message ?? 'Error inesperado'
+  //           );
+  //         }
+  //         await refreshExportaciones();
+  //       }
+
+  //       if (ok + failed > 0) await notifySyncFinished(ok, failed);
+  //     } finally {
+  //       if (started) endSync();
+  //       syncingExpRef.current = false;
+  //     }
+  //   },
+  //   [refreshExportaciones, canSyncWithNetwork, beginSync, endSync]
+  // );
+
   const syncExportacionesNow = useCallback(
     async (force: boolean = false) => {
       if (syncingExpRef.current) return;
@@ -164,6 +304,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
         let ok = 0;
         let failed = 0;
 
+        // Procesamos estrictamente lo que hay en la cola en este momento
         for (const item of pendientes) {
           try {
             const actividad = await actividadStorage.obtener(item.actividadLocalId);
@@ -173,36 +314,46 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
               continue;
             }
 
-            const resultado = await exportarUnaVez(
-              item.estacionServicioActividadId,
-              () => exportarActividadAlServidor(actividad)
-            );
+            const fotosPendientes = actividad.fotos.filter(f => !f.subidaAlServidor);
+            if (fotosPendientes.length === 0) {
+              await actividadStorage.marcarExportada(item.actividadLocalId);
+              await exportacionesStorage.eliminar(item.id);
+              continue;
+            }
+
+            const actividadParaEnviar = { ...actividad, fotos: fotosPendientes };
+            const resultado = await exportarActividadAlServidor(actividadParaEnviar);
 
             if (!resultado.success) {
-              await exportacionesStorage.marcarError(
-                item.id,
-                resultado.message ?? 'Error desconocido'
-              );
+              await exportacionesStorage.marcarError(item.id, resultado.message ?? 'Error desconocido');
               failed += 1;
             } else {
+              await actividadStorage.marcarFotosSubidas(
+                actividad.idLocal,
+                fotosPendientes.map(f => f.idLocal)
+              );
               await actividadStorage.marcarExportada(item.actividadLocalId);
               await exportacionesStorage.eliminar(item.id);
               ok += 1;
             }
           } catch (err: any) {
             failed += 1;
-            await exportacionesStorage.marcarError(
-              item.id,
-              err?.message ?? 'Error inesperado'
-            );
+            await exportacionesStorage.marcarError(item.id, err?.message ?? 'Error inesperado');
           }
+
           await refreshExportaciones();
+          // Pausa de 1 segundo entre cada foto para no saturar Android
+          await new Promise(r => setTimeout(r, 1000));
         }
 
         if (ok + failed > 0) await notifySyncFinished(ok, failed);
       } finally {
         if (started) endSync();
         syncingExpRef.current = false;
+
+        // ⚠️ ELIMINADO EL setTimeout RECURSIVO AQUÍ.
+        // Confiamos en que NetInfo volverá a disparar el sync cuando 
+        // el usuario cambie de red, o al abrir la pantalla de Sincronización.
       }
     },
     [refreshExportaciones, canSyncWithNetwork, beginSync, endSync]
@@ -266,11 +417,14 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       if (can) {
         syncNow();
         syncExportacionesNow();
+        syncSupervisoresNow();
+        syncTareasNow();
+
       }
     });
 
     return () => unsubscribe();
-  }, [refreshQueue, refreshExportaciones, syncNow, syncExportacionesNow, canSyncWithNetwork]);
+  }, [refreshQueue, refreshExportaciones, syncNow, syncTareasNow, syncExportacionesNow, syncSupervisoresNow, canSyncWithNetwork]);
 
   const pendingCount = queue.filter((i) => i.status !== 'done').length;
   const pendingExportacionesCount = exportacionesQueue.filter(
@@ -289,6 +443,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
         refreshQueue,
         refreshExportaciones,
         syncNow,
+        syncTareasNow,
         syncExportacionesNow,
         addPhotoToQueue,
         addExportacionToQueue,

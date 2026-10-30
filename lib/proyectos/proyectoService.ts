@@ -1,3 +1,4 @@
+import { supervisoresStorage } from '../exportaciones/supervisoresStorage';
 import { authService } from '../user/authService';
 import { proyectoCache } from './proyectoCache';
 
@@ -30,7 +31,7 @@ export interface Proyecto {
 export interface ActividadDetalle {
     id: number;
     nombre: string;
-    tipo: 'sistema' | 'inspeccion' | 'mantenimiento' | 'tarea';
+    tipo: 'sistema' | 'inspeccion' | 'mantenimiento' | 'tarea' | 'observacion';
     estado: 'pendiente' | 'en_progreso' | 'completado' | 'observado';
     conforme: boolean | null;
 }
@@ -74,6 +75,11 @@ export interface ProyectoDetalle {
     estado: EstadoProyecto;
     progreso: number;
     estaciones: EstacionDetalle[];
+}
+
+export interface SupervisoresEstacionResponse {
+    disponibles: SupervisorExterno[];
+    asignados: number[];
 }
 
 export const proyectoService = {
@@ -131,6 +137,73 @@ export const proyectoService = {
             const cached = await proyectoCache.leerDetalle(id);
             if (cached) return cached;
             throw err;
+        }
+    },
+
+
+    async obtenerSupervisores(estacionId: number): Promise<SupervisoresEstacionResponse> {
+        try {
+            const token = await authService.getToken();
+            if (!token) throw new Error('Sin sesión');
+
+            const res = await fetch(`${BASE_URL}/api/estaciones/${estacionId}/supervisores`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    Accept: 'application/json',
+                },
+            });
+
+            if (!res.ok) throw new Error('Error del servidor');
+
+            const json = await res.json();
+            const data = json.data ?? json;
+
+            await proyectoCache.guardarSupervisoresCache(estacionId, data);
+            return data;
+        } catch (err) {
+            const cached = await proyectoCache.leerSupervisoresCache(estacionId);
+
+            if (cached) {
+                return cached;
+            }
+
+            return { disponibles: [], asignados: [] };
+        }
+    },
+    async guardarSupervisores(estacionId: number, supervisoresIds: number[]): Promise<{ success: boolean; offline: boolean }> {
+        try {
+            const token = await authService.getToken();
+            if (!token) throw new Error('Sin sesión');
+
+            const res = await fetch(`${BASE_URL}/api/estaciones/${estacionId}/supervisores`, {
+                method: 'PUT',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                },
+                body: JSON.stringify({ supervisores_ids: supervisoresIds }),
+            });
+
+            if (!res.ok) throw new Error('Error del servidor');
+
+            const cached = await proyectoCache.leerSupervisoresCache(estacionId);
+            if (cached) {
+                cached.asignados = supervisoresIds;
+                await proyectoCache.guardarSupervisoresCache(estacionId, cached);
+            }
+
+            return { success: true, offline: false };
+        } catch (err) {
+            await supervisoresStorage.encolar(estacionId, supervisoresIds);
+
+            const cached = await proyectoCache.leerSupervisoresCache(estacionId);
+            if (cached) {
+                cached.asignados = supervisoresIds;
+                await proyectoCache.guardarSupervisoresCache(estacionId, cached);
+            }
+
+            return { success: true, offline: true };
         }
     },
 };

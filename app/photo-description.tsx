@@ -1,5 +1,3 @@
-// app/photo-description.tsx
-
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -18,13 +16,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import InputTexto, { InputTextoRef } from '@/components/Inputtexto';
+import { ModalCrearTarea } from '@/components/ModalCrearTarea';
 import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 import { useActividad } from '../lib/actividades/ActividadContext';
 import { FotoCaptura } from '../lib/actividades/types';
 
-// ============================================================
-// ROUTE COMPONENT
-// ============================================================
 export default function PhotoDescribeScreen() {
     const router = useRouter();
     const { idFotoLocal } = useLocalSearchParams<{ idFotoLocal?: string }>();
@@ -45,32 +41,14 @@ export default function PhotoDescribeScreen() {
         return <FotoNoEncontrada onVolver={handleVolver} />;
     }
 
-    // key={foto.idLocal} → remount completo cuando cambia la foto.
-    // El estado interno del hijo se reinicia solo, sin efectos ni
-    // ajustes manuales. Ver:
-    // https://react.dev/learn/you-might-not-need-an-effect#resetting-all-state-when-a-prop-changes
     return <PhotoDescribeContent key={foto.idLocal} foto={foto} />;
 }
 
-// ============================================================
-// CONTENIDO (se remonta por key)
-// ============================================================
-
-
-// app/photo-description.tsx  —  CAMBIOS (los estilos y el resto del archivo no se tocan)
-//
-// 1) Imports:
-//      - quita `TextInput` de 'react-native'
-//      + import InputTexto, { type InputTextoRef } from '../components/InputTexto';
-//
-// 2) Reemplaza SOLO la función PhotoDescribeContent por esta.
-//    Las diferencias: ya no hay `descripcion` ni `descripcionTemporal` en estado ni `value` en el
-//    campo; el texto lo guarda InputTexto y se lee con campo.current.getValue().
 
 function PhotoDescribeContent({ foto }: { foto: FotoCaptura }) {
     const router = useRouter();
     const campo = useRef<InputTextoRef>(null);
-    const { actualizarFoto, eliminarFoto } = useActividad();
+    const { actualizarFoto, eliminarFoto, actividadEnCurso } = useActividad();
 
     const descripcionGuardada = foto.descripcionIndividual ?? '';
     const subida = !!foto.subidaAlServidor;
@@ -79,11 +57,14 @@ function PhotoDescribeContent({ foto }: { foto: FotoCaptura }) {
     const [isListening, setIsListening] = useState(false);
     const textoBaseRef = useRef('');
 
-    // Si la foto ya se subió, se muestra solo lectura hasta que se pulse "Editar"
     const mostrarInput = !subida || editandoDescripcion;
     const debeMostrarReadonly = !mostrarInput;
 
-    // Foco automático al entrar en edición
+    const [estadoTarea, setEstadoTarea] = useState<'conforme' | 'observada' | null>(null);
+    const [modalTareaVisible, setModalTareaVisible] = useState(false);
+
+    const [descripcionParaTarea, setDescripcionParaTarea] = useState('');
+
     useEffect(() => {
         if (editandoDescripcion) {
             const t = setTimeout(() => campo.current?.focus(), 50);
@@ -91,7 +72,6 @@ function PhotoDescribeContent({ foto }: { foto: FotoCaptura }) {
         }
     }, [editandoDescripcion]);
 
-    // Voz: suscripción externa
     useEffect(() => {
         const subStart = ExpoSpeechRecognitionModule.addListener('start', () => setIsListening(true));
         const subEnd = ExpoSpeechRecognitionModule.addListener('end', () => setIsListening(false));
@@ -162,7 +142,26 @@ function PhotoDescribeContent({ foto }: { foto: FotoCaptura }) {
             mostrarInput ? (campo.current?.getValue() ?? descripcionGuardada) : descripcionGuardada
         ).trim();
 
-        await actualizarFoto(foto.idLocal, { descripcionIndividual: textoFinal });
+        await actualizarFoto(foto.idLocal, {
+            descripcionIndividual: textoFinal,
+            subidaAlServidor: false
+        });
+
+        setEditandoDescripcion(false);
+        textoBaseRef.current = '';
+    };
+
+    const guardarEstadoYSalir = async (estado: 'conforme' | 'observada') => {
+        const textoFinal = (
+            mostrarInput ? (campo.current?.getValue() ?? descripcionGuardada) : descripcionGuardada
+        ).trim();
+
+        await actualizarFoto(foto.idLocal, {
+            descripcionIndividual: textoFinal,
+            subidaAlServidor: false
+        });
+
+        setEstadoTarea(estado);
         volverAtras();
     };
 
@@ -182,6 +181,19 @@ function PhotoDescribeContent({ foto }: { foto: FotoCaptura }) {
                 },
             ]
         );
+    };
+
+    // Función auxiliar que extrae el texto y lo guarda
+    const guardarDescripcionActual = async () => {
+        const textoFinal = (
+            mostrarInput ? (campo.current?.getValue() ?? descripcionGuardada) : descripcionGuardada
+        ).trim();
+
+        // Solo guardamos si el texto cambió o si es nuevo
+        if (textoFinal !== descripcionGuardada) {
+            console.log("💾 Guardando descripción automática:", textoFinal);
+            await actualizarFoto(foto.idLocal, { descripcionIndividual: textoFinal });
+        }
     };
 
     return (
@@ -284,10 +296,79 @@ function PhotoDescribeContent({ foto }: { foto: FotoCaptura }) {
                                     </TouchableOpacity>
                                 </View>
                             ) : (
-                                <TouchableOpacity style={styles.saveBtn} onPress={handleGuardar} activeOpacity={0.85}>
-                                    <Text style={styles.saveBtnText}>Guardar</Text>
-                                </TouchableOpacity>
+                                <View style={{ marginTop: 15 }}>
+                                    <Text style={{ fontFamily: 'Poppins-SemiBold', fontSize: 14, color: '#374151', marginBottom: 10 }}>
+                                        Estado de la tarea
+                                    </Text>
+
+                                    <View style={{ flexDirection: 'row', gap: 10, marginBottom: 15 }}>
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.estadoBtn,
+                                                estadoTarea === 'conforme' && styles.estadoBtnActive
+                                            ]}
+                                            onPress={() => guardarEstadoYSalir('conforme')} // <--- AQUÍ
+                                            activeOpacity={0.8}
+                                        >
+                                            <Text style={[
+                                                styles.estadoBtnText,
+                                                estadoTarea === 'conforme' && styles.estadoBtnTextActive
+                                            ]}>Conforme</Text>
+                                        </TouchableOpacity>
+
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.estadoBtn,
+                                                estadoTarea === 'observada' && styles.estadoBtnActive
+                                            ]}
+                                            onPress={() => guardarEstadoYSalir('observada')} // <--- AQUÍ
+                                            activeOpacity={0.8}
+                                        >
+                                            <Text style={[
+                                                styles.estadoBtnText,
+                                                estadoTarea === 'observada' && styles.estadoBtnTextActive
+                                            ]}>Observada</Text>
+                                        </TouchableOpacity>
+                                    </View>
+
+                                    {estadoTarea === 'observada' && (
+                                        <TouchableOpacity
+                                            style={{
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                backgroundColor: '#FFF0F1',
+                                                padding: 12,
+                                                borderRadius: 8,
+                                                borderWidth: 1,
+                                                borderColor: '#FFD0D3'
+                                            }}
+                                            onPress={() => {
+                                                const textoActual = campo.current?.getValue() || descripcionGuardada;
+                                                setDescripcionParaTarea(textoActual);
+                                                setModalTareaVisible(true);
+                                            }}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Ionicons name="add-circle-outline" size={20} color="#910E16" />
+                                            <Text style={{ color: '#910E16', marginLeft: 8, fontFamily: 'Poppins-SemiBold', fontSize: 14 }}>
+                                                Crear tarea por observación
+                                            </Text>
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
                             )}
+
+                            <ModalCrearTarea
+                                visible={modalTareaVisible}
+                                proyectoId={actividadEnCurso?.proyectoId || 0}
+                                estacionId={actividadEnCurso?.estacionId || 0}
+                                estacionServicioId={actividadEnCurso?.estacionServicioActividadId || 0}
+                                descripcionBase={descripcionParaTarea}
+                                onClose={() => setModalTareaVisible(false)}
+                                onGuardadoExitoso={() => {
+                                    setEstadoTarea('observada');
+                                }}
+                            />
                         </View>
                     )}
                 </ScrollView>
@@ -335,6 +416,17 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: '#E5E7EB',
     },
+
+    saveBtn: {
+        flex: 1,
+        paddingVertical: 14,
+        borderRadius: 10,
+        borderWidth: 1.5,
+        borderColor: '#E5E7EB',
+        alignItems: 'center',
+        backgroundColor: '#B5121B',
+    },
+
     iconBtn: { padding: 6 },
     headerTitle: {
         fontFamily: 'Poppins-SemiBold',
@@ -400,13 +492,7 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: '#111827',
     },
-    saveBtn: {
-        backgroundColor: '#B5121B',
-        borderRadius: 12,
-        paddingVertical: 14,
-        alignItems: 'center',
-        marginTop: 16,
-    },
+
     saveBtnText: {
         color: '#FFFFFF',
         fontFamily: 'Poppins-SemiBold',
@@ -490,5 +576,28 @@ const styles = StyleSheet.create({
     backPillText: {
         color: '#FFFFFF',
         fontFamily: 'Poppins-SemiBold',
+    },
+
+    estadoBtn: {
+        flex: 1,
+        paddingVertical: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#D1D5DB',
+        borderRadius: 8,
+        backgroundColor: '#FFFFFF',
+    },
+    estadoBtnActive: {
+        borderColor: '#910E16',
+        backgroundColor: '#FFF0F1', // Un tono rojizo suave
+    },
+    estadoBtnText: {
+        fontFamily: 'Poppins-SemiBold',
+        fontSize: 14,
+        color: '#6B7280',
+    },
+    estadoBtnTextActive: {
+        color: '#910E16',
     },
 });

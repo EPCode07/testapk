@@ -99,7 +99,6 @@ export default function ProyectoDetalleScreen() {
     useFocusEffect(
         useCallback(() => {
             cargarDetalle();
-            // 🔑 Buscar si hay un reporte rechazado para la estación actual
             if (estacionIdContext) {
                 reporteService.listar()
                     .then((lista) => {
@@ -144,7 +143,6 @@ export default function ProyectoDetalleScreen() {
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
                 >
-                    {/* CARD DEL PROYECTO */}
                     <View style={styles.proyectoCard}>
                         <TouchableOpacity
                             style={styles.proyectoHeader}
@@ -195,6 +193,7 @@ export default function ProyectoDetalleScreen() {
                                     <CardEstacion
                                         key={est.id}
                                         estacion={est}
+                                        onRefrescar={cargarDetalle}
                                         onActividadPress={(actividadId, actividadNombre, estado) => {
                                             if (estado === 'completado') {
                                                 setActividadPendiente({
@@ -253,7 +252,11 @@ export default function ProyectoDetalleScreen() {
                                 actividadActualId: actividadPendiente.id,
                             });
 
-                            router.push('/photo-album' as any);
+                            router.push({
+                                pathname: '/photo-album',
+                                params: { id: String(actividadPendiente.id) }
+                            } as any);
+
                             setActividadPendiente(null);
                         }}
                         onAgregarRegistro={() => {

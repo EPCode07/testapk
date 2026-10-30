@@ -35,7 +35,7 @@ export default function ConfirmarReaperturaModal({
                     <Text style={styles.title}>Actividad completada</Text>
 
                     <Text style={styles.body}>
-                        <Text style={styles.bold}>"{nombreActividad}"</Text> ya fue completada
+                        <Text style={styles.bold}>{nombreActividad}</Text> ya fue completada
                         {fechaCompletada ? ` el ${fechaCompletada}` : ''}.
                         {'\n\n'}
                         ¿Qué querés hacer?

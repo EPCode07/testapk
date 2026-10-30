@@ -147,15 +147,27 @@ export default function SucesoModal({
                     }
                 } catch { }
 
-                const res = await crearSuceso({
-                    categoria_id: categoriaSeleccionada.id,
-                    descripcion: descripcion.trim() || undefined,
-                    valor: valor ? Number(valor) : undefined,
-                    estacion_servicio_actividad_id: actividadId,
-                    latitud: lat,
-                    longitud: lng,
-                    categoriaSnapshot: categoriaSeleccionada,
-                });
+                let res: any;
+                try {
+                    const peticionRed = crearSuceso({
+                        categoria_id: categoriaSeleccionada.id,
+                        descripcion: descripcion.trim() || undefined,
+                        valor: valor ? Number(valor) : undefined,
+                        estacion_servicio_actividad_id: actividadId,
+                        latitud: lat,
+                        longitud: lng,
+                        categoriaSnapshot: categoriaSeleccionada,
+                    });
+
+                    const relojSeguridad = new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error('Tiempo de espera agotado')), 8000)
+                    );
+
+                    res = await Promise.race([peticionRed, relojSeguridad]);
+                } catch (error) {
+                    console.warn("Red lenta. Guardando suceso de forma local.");
+                    res = { offline: true };
+                }
 
                 if (!esModoContexto && contexto) {
                     setUltimoContexto(contexto);
