@@ -43,7 +43,10 @@ type ContextValue = {
     addActividad: (act: ActividadResumen) => void;
     clear: () => void;
 
-    cargarActividadEnCurso: (actividadId: number) => Promise<void>;
+    cargarActividadEnCurso: (
+        actividadId: number,
+        fallback?: { proyectoId: number; estacionId: number; nombre: string }
+    ) => Promise<ActividadEnCurso | null>;
     agregarFotoActividad: (foto: Omit<FotoCaptura, 'idLocal'>) => Promise<void>;
     actualizarFoto: (idFotoLocal: string, patch: Partial<FotoCaptura>) => Promise<void>;
     eliminarFoto: (idFotoLocal: string) => Promise<void>;
@@ -160,17 +163,23 @@ export function ActividadProvider({ children }: { children: ReactNode }) {
 
     // ============ Actividad en curso ============
 
-    const cargarActividadEnCurso = useCallback(async (actividadId: number) => {
+    const cargarActividadEnCurso = useCallback(async (
+        actividadId: number,
+        fallback?: { proyectoId: number; estacionId: number; nombre: string }
+    ) => {
         setCargandoActividad(true);
         try {
             let act = await actividadStorage.obtenerPorActividadId(actividadId);
 
-            const pId = proyectoIdRef.current;
-            const eId = estacionIdRef.current;
+            const pId = proyectoIdRef.current ?? fallback?.proyectoId ?? null;
+            const eId = estacionIdRef.current ?? fallback?.estacionId ?? null;
             const acts = actividadesRef.current;
 
             if (!act && pId && eId) {
-                const nombreAct = acts.find((a) => a.id === actividadId)?.nombre ?? 'Actividad';
+                const nombreAct =
+                    acts.find((a) => a.id === actividadId)?.nombre ??
+                    fallback?.nombre ??
+                    'Actividad';
                 act = await actividadStorage.crear({
                     estacionServicioActividadId: actividadId,
                     proyectoId: pId,
@@ -179,7 +188,8 @@ export function ActividadProvider({ children }: { children: ReactNode }) {
                 });
             }
 
-            setActividadEnCursoSync(act);
+            setActividadEnCursoSync(act ?? null);
+            return act ?? null;
         } finally {
             setCargandoActividad(false);
         }
@@ -188,16 +198,11 @@ export function ActividadProvider({ children }: { children: ReactNode }) {
     const agregarFotoActividad = useCallback(
         async (foto: Omit<FotoCaptura, 'idLocal'>) => {
             const actual = actividadEnCursoRef.current;
-            if (!actual) return;
+            if (!actual) throw new Error('No hay actividad en curso para guardar la foto');
 
             const nueva = await actividadStorage.agregarFoto(actual.idLocal, foto);
-            if (nueva) {
-                const updated = {
-                    ...actual,
-                    fotos: [...actual.fotos, nueva],
-                };
-                setActividadEnCursoSync(updated);
-            }
+            if (!nueva) throw new Error('No se pudo guardar la foto');
+            setActividadEnCursoSync({ ...actual, fotos: [...actual.fotos, nueva] });
         },
         [setActividadEnCursoSync]
     );

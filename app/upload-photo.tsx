@@ -11,7 +11,6 @@ import WatermarkCard from '../components/WatermarkCard';
 import { useActividad } from '../lib/actividades/ActividadContext';
 import { DireccionInfo, obtenerDireccion } from '../lib/location/reverseGeocode';
 
-// ── Tokens de diseño ─────────────────────────────────────────────
 const BRAND = '#910E16';
 const BRAND_SOFT = '#FEF2F2';
 const BRAND_BORDER = '#FCA5A5';
@@ -23,12 +22,25 @@ export default function UploadPhotoScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const { width: screenWidth } = useWindowDimensions();
-    const { estacion_servicio_actividad_id } = useLocalSearchParams();
-    const { cargarActividadEnCurso, agregarFotoActividad } = useActividad();
-    const params = useLocalSearchParams<{ estacion_servicio_actividad_id?: string | string[] }>();
-    const idRaw = params.estacion_servicio_actividad_id;
-    const tareaId = Array.isArray(idRaw) ? idRaw[0] : idRaw;
+    const { estacion_servicio_actividad_id, proyecto_id, estacion_id, actividad_nombre } =
+        useLocalSearchParams<{
+            estacion_servicio_actividad_id?: string;
+            proyecto_id?: string;
+            estacion_id?: string;
+            actividad_nombre?: string;
+        }>();
 
+    const tareaIdNum = Number(estacion_servicio_actividad_id);
+
+    const fallback =
+        proyecto_id && estacion_id
+            ? {
+                proyectoId: Number(proyecto_id),
+                estacionId: Number(estacion_id),
+                nombre: actividad_nombre ?? 'Actividad',
+            }
+            : undefined;
+    const { cargarActividadEnCurso, agregarFotoActividad } = useActividad();
     const [selectedImages, setSelectedImages] = useState<string[]>([]);
     const [processingUri, setProcessingUri] = useState<string | null>(null);
     const [processing, setProcessing] = useState(false);
@@ -38,15 +50,13 @@ export default function UploadPhotoScreen() {
     const viewShotRef = useRef<any>(null);
     const imageLoadedRef = useRef(false);
 
-    // Tamaño exacto de cada miniatura: 3 columnas siempre alineadas
     const itemSize = Math.floor((screenWidth - SIDE_PADDING * 2 - GAP * (COLUMNS - 1)) / COLUMNS);
     const footerBottom = Math.max(insets.bottom, 12) + 8;
 
     useEffect(() => {
-        if (estacion_servicio_actividad_id) {
-            cargarActividadEnCurso(Number(estacion_servicio_actividad_id));
+        if (Number.isFinite(tareaIdNum)) {
+            cargarActividadEnCurso(tareaIdNum, fallback);
         }
-
         const fetchUbicacion = async () => {
             try {
                 const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
@@ -58,11 +68,10 @@ export default function UploadPhotoScreen() {
             }
         };
         fetchUbicacion();
-    }, [estacion_servicio_actividad_id]);
+    }, [tareaIdNum]);
 
-    // 1. Lógica para agregar imágenes (sin borrar las anteriores)
+
     const pickImages = async () => {
-        // 1. Solicitar permiso de ubicación
         const { status } = await Location.requestForegroundPermissionsAsync();
 
         if (status !== 'granted') {
@@ -70,10 +79,8 @@ export default function UploadPhotoScreen() {
                 'Permiso denegado',
                 'Necesitamos acceso a tu ubicación para colocar la marca de agua en las fotos. Puedes activarlo en los ajustes de tu teléfono.'
             );
-            // Opcional: Puedes decidir si continuar sin ubicación o detener el flujo aquí.
             // return; 
         } else {
-            // 2. Si nos da permiso, obtenemos la ubicación fresca
             try {
                 const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
                 setCurrentLocation(loc);
@@ -85,7 +92,6 @@ export default function UploadPhotoScreen() {
             }
         }
 
-        // 3. Finalmente, abrimos la galería
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ['images'],
             allowsMultipleSelection: true,
@@ -101,12 +107,17 @@ export default function UploadPhotoScreen() {
         }
     };
 
-    // 2. Lógica para eliminar una imagen específica
     const removeImage = (uriToRemove: string) => {
         setSelectedImages(prev => prev.filter(uri => uri !== uriToRemove));
     };
 
     const handleSave = async () => {
+        const act = await cargarActividadEnCurso(tareaIdNum, fallback);
+        if (!act) {
+            Alert.alert('Error', 'No se pudo abrir la tarea. Vuelve a entrar desde la estación.');
+            return;
+        }
+
         if (selectedImages.length === 0 || processing) return;
         setProcessing(true);
 
@@ -148,24 +159,22 @@ export default function UploadPhotoScreen() {
                 });
             }
 
-            Alert.alert("Éxito", "Fotos agregadas a la tarea.");
+
+            Alert.alert('Éxito', 'Fotos agregadas a la tarea.');
             router.replace({
                 pathname: '/photo-album',
-                params: { id: String(tareaId || '') } // Aseguramos que sea un string limpio
+                params: { id: String(tareaIdNum) },
             } as any);
-
         } catch (error) {
-            Alert.alert("Error", "No se pudieron procesar las fotos.");
+            Alert.alert('Error', 'No se pudieron procesar las fotos.');
             console.error(error);
         } finally {
             setProcessingUri(null);
             setProcessing(false);
         }
     };
-
     return (
         <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-            {/* <StatusBar barStyle="dark-content" backgroundColor="#FFF" /> */}
 
             <View style={{ backgroundColor: '#ECEDEF', flex: 1 }}>
 
@@ -174,28 +183,10 @@ export default function UploadPhotoScreen() {
 
                 <AppHeader variant="back" title="Subir Fotos" />
 
-
-                {/* <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.7}>
-                    <Ionicons name="arrow-back" size={22} color="#374151" />
-                </TouchableOpacity>
-                <View style={styles.headerTitleContainer}>
-                    <Text style={styles.title} numberOfLines={1}>Galería de evidencias</Text>
-                    <Text style={styles.subtitle} numberOfLines={1}>Selecciona las fotos para la tarea</Text>
-                </View>
-                {selectedImages.length > 0 && (
-                    <View style={styles.headerCount}>
-                        <Ionicons name="images-outline" size={14} color={BRAND} />
-                        <Text style={styles.headerCountText}>{selectedImages.length}</Text>
-                    </View>
-                )}
-            </View> */}
-
                 <ScrollView
                     contentContainerStyle={[styles.scrollContent, { paddingBottom: footerBottom + 100 }]}
                     showsVerticalScrollIndicator={false}
                 >
-                    {/* ESTADO DE UBICACIÓN (solo lectura de estado existente) */}
                     <View style={styles.locationChip}>
                         <Ionicons
                             name={direccionActual ? 'location' : 'location-outline'}
@@ -211,7 +202,6 @@ export default function UploadPhotoScreen() {
                     </View>
 
                     {selectedImages.length === 0 ? (
-                        /* ESTADO VACÍO */
                         <View style={styles.emptyStateContainer}>
                             <TouchableOpacity style={styles.uploadBtnEmpty} onPress={pickImages} activeOpacity={0.8}>
                                 <View style={styles.iconCircle}>
@@ -225,7 +215,6 @@ export default function UploadPhotoScreen() {
                         <>
                             <Text style={styles.sectionLabel}>Fotos seleccionadas</Text>
 
-                            {/* CUADRÍCULA */}
                             <View style={styles.gridContainer}>
                                 {selectedImages.map((uri, index) => (
                                     <View key={uri} style={[styles.imageWrapper, { width: itemSize, height: itemSize }]}>
@@ -246,7 +235,6 @@ export default function UploadPhotoScreen() {
                                     </View>
                                 ))}
 
-                                {/* AÑADIR MÁS */}
                                 <TouchableOpacity
                                     style={[styles.addMoreBtn, { width: itemSize, height: itemSize }]}
                                     onPress={pickImages}
@@ -261,8 +249,6 @@ export default function UploadPhotoScreen() {
                         </>
                     )}
                 </ScrollView>
-
-                {/* FOOTER FLOTANTE */}
                 {selectedImages.length > 0 && (
                     <View style={[styles.footer, { bottom: footerBottom }]}>
                         <View style={styles.footerLeft}>
@@ -288,14 +274,12 @@ export default function UploadPhotoScreen() {
                             ) : (
                                 <>
                                     <Ionicons name="cloud-upload" size={24} color="#FFF" />
-                                    {/* <Text style={styles.primaryBtnText}></Text> */}
                                 </>
                             )}
                         </TouchableOpacity>
                     </View>
                 )}
 
-                {/* VISTA OCULTA PARA LA MARCA DE AGUA */}
                 {processingUri && (
                     <View style={styles.hiddenContainer} pointerEvents="none">
                         <ViewShot ref={viewShotRef} options={{ format: 'jpg', quality: 0.9 }} style={{ width: 900, height: 1200 }}>

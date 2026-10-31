@@ -115,7 +115,8 @@
           "locationAlwaysAndWhenInUsePermission": "Permite a $(PRODUCT_NAME) acceder a tu ubicación para mostrarte en el mapa y detectar proyectos cercanos."
         }
       ],
-      "react-native-quick-crypto"
+      "react-native-quick-crypto",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,

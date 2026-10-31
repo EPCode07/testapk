@@ -57,6 +57,26 @@ export default function ProyectoDetalleScreen() {
         estado: string;
     } | null>(null);
 
+    const seedContexto = (
+        estacionId: number,
+        estacionCodigo: string,
+        estacionServicios: any[],
+        actividadId: number
+    ) => {
+        seed({
+            proyectoId: proyecto!.id,
+            proyectoNombre: proyecto!.nombre,
+            estacionId,
+            estacionCodigo,
+            actividades: estacionServicios.flatMap((s) =>
+                s.actividades.map((a: any) => ({
+                    id: a.id, nombre: a.nombre, tipo: a.tipo, estado: a.estado, conforme: a.conforme,
+                }))
+            ),
+            actividadActualId: actividadId,
+        });
+    };
+
     const abrirActividad = (
         estacionId: number,
         estacionCodigo: string,
@@ -86,6 +106,19 @@ export default function ProyectoDetalleScreen() {
             params: {
                 estacion_servicio_actividad_id: String(actividadId),
             },
+        } as any);
+    };
+
+    const abrirSubida = (
+        estacionId: number,
+        estacionCodigo: string,
+        estacionServicios: any[],
+        actividadId: number
+    ) => {
+        seedContexto(estacionId, estacionCodigo, estacionServicios, actividadId);
+        router.push({
+            pathname: '/upload-photo',
+            params: { estacion_servicio_actividad_id: String(actividadId) },
         } as any);
     };
 
@@ -194,6 +227,9 @@ export default function ProyectoDetalleScreen() {
                                         key={est.id}
                                         estacion={est}
                                         onRefrescar={cargarDetalle}
+                                        onSubirFotosPress={(actividadId) =>
+                                            abrirSubida(est.id, est.codigo, est.servicios, actividadId)
+                                        }
                                         onActividadPress={(actividadId, actividadNombre, estado) => {
                                             if (estado === 'completado') {
                                                 setActividadPendiente({

@@ -27,8 +27,7 @@ import SucesoModal from '@/components/sucesos/SucesoModal';
 import { programacionService } from '@/lib/actividades/programacionService';
 import { useLocalSearchParams } from 'expo-router';
 import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
-import { actividadStorage } from '../lib/actividades/actividadStorage'; // <-- IMPORTA ESTO ARRIBA
-
+import { actividadStorage } from '../lib/actividades/actividadStorage';
 
 export default function PhotoAlbumScreen() {
     const router = useSafeNavigate();
@@ -47,11 +46,9 @@ export default function PhotoAlbumScreen() {
         proyectoId,
         marcarFotosSubidas,
         cargarActividadEnCurso,
-
     } = useActividad();
 
     const { addExportacionToQueue } = useSync();
-
 
     const [descripcion, setDescripcion] = useState('');
     const [conforme, setConforme] = useState<boolean | null>(null);
@@ -62,8 +59,24 @@ export default function PhotoAlbumScreen() {
     const textoBaseRef = useRef('');
     const [sugerencia, setSugerencia] = useState<SugerenciaAvance | null>(null);
     const [guardandoAvance, setGuardandoAvance] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
     const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // 🔥 CARGA INICIAL ÚNICA Y SEGURA
+    useEffect(() => {
+        let isMounted = true;
+        const init = async () => {
+            if (targetId) {
+                console.log('targetId:', id, targetId);
+                await cargarActividadEnCurso(targetId);
+                await cargarActividadEnCurso(targetId).catch(console.error);
+            }
+            if (isMounted) setIsLoading(false);
+        };
+        init();
+        return () => { isMounted = false; };
+    }, [targetId]);
 
     useEffect(() => {
         if (actividadEnCurso) {
@@ -106,15 +119,6 @@ export default function PhotoAlbumScreen() {
             subResult.remove();
         };
     }, []);
-
-    useEffect(() => {
-        const currentId = Number(actividadEnCurso?.estacionServicioActividadId);
-        if (targetId && !isNaN(targetId) && currentId !== targetId) {
-            cargarActividadEnCurso(targetId).catch((err) => {
-                console.error("Error al cargar la tarea en el álbum:", err);
-            });
-        }
-    }, [targetId, actividadEnCurso?.estacionServicioActividadId, cargarActividadEnCurso]);
 
     const contextoActividad: SeleccionContexto | null = actividadEnCurso
         ? {
@@ -180,7 +184,6 @@ export default function PhotoAlbumScreen() {
     const debeMostrarReadonly =
         estaExportada && tieneDescripcion && !editandoDescripcion;
 
-
     const fotosSubidasRef = useRef(0);
 
     const mostrarAlertaFinal = () => {
@@ -200,20 +203,35 @@ export default function PhotoAlbumScreen() {
         );
     };
 
-    // Si aún no hay actividad en curso, mostramos el spinner
-    if (!actividadEnCurso) {
+    // 🔥 BLOQUE DE SEGURIDAD DE RENDERIZADO
+    if (isLoading) {
         return (
             <SafeAreaView style={styles.container}>
                 <StatusBar barStyle="dark-content" />
                 <View style={styles.emptyWrapper}>
                     <ActivityIndicator size="large" color="#B5121B" />
                     <Text style={[styles.emptyText, { marginTop: 12 }]}>
-                        Cargando fotos de la tarea...
+                        Cargando fotos...
                     </Text>
                 </View>
             </SafeAreaView>
         );
     }
+
+    if (!actividadEnCurso) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <StatusBar barStyle="dark-content" />
+                <View style={styles.emptyWrapper}>
+                    <Text style={styles.emptyText}>No se encontraron fotos para esta tarea.</Text>
+                    <TouchableOpacity style={styles.backPill} onPress={() => router.back()}>
+                        <Text style={styles.backPillText}>Volver</Text>
+                    </TouchableOpacity>
+                </View>
+            </SafeAreaView>
+        );
+    }
+
     const irAProyectoDetalle = () => {
         if (router.canGoBack()) {
             if (proyectoId) {
@@ -350,7 +368,6 @@ export default function PhotoAlbumScreen() {
         try {
             await actualizarDescripcionGeneral(descripcion, conforme);
 
-            // 🔥 LA SOLUCIÓN: Leemos la actividad directo del disco (con las descripciones guardadas)
             const actividadFresca = await actividadStorage.obtener(actividadEnCurso.idLocal);
             const fotosFrescas = actividadFresca?.fotos || actividadEnCurso.fotos;
 
@@ -375,7 +392,6 @@ export default function PhotoAlbumScreen() {
                 }
             }
 
-            // Armamos el paquete con las fotos frescas del disco
             const actividadParaEnviar = {
                 ...actividadEnCurso,
                 descripcionGeneral: descripcion,
@@ -427,7 +443,6 @@ export default function PhotoAlbumScreen() {
         }
     };
 
-
     return (
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
             <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -470,7 +485,6 @@ export default function PhotoAlbumScreen() {
                 contentContainerStyle={styles.scrollContent}
                 keyboardShouldPersistTaps="handled"
             >
-                {/* Grid de fotos */}
                 <View style={styles.grid}>
                     {actividadEnCurso.fotos.map((foto) => (
                         <TouchableOpacity
@@ -496,7 +510,6 @@ export default function PhotoAlbumScreen() {
                     )}
                 </View>
 
-                {/* Descripción general */}
                 <View style={styles.row}>
                     <Text style={styles.sectionLabel}>Descripción general</Text>
 
@@ -591,23 +604,6 @@ export default function PhotoAlbumScreen() {
                             Guardar
                         </Text>
                     </TouchableOpacity>
-
-                    {/* <TouchableOpacity
-                        style={[
-                            styles.decisionBtn,
-                            conforme === false && styles.decisionBtnObservado,
-                        ]}
-                        onPress={() => setConforme(false)}
-                    >
-                        <Text
-                            style={[
-                                styles.decisionText,
-                                conforme === false && styles.decisionTextActive,
-                            ]}
-                        >
-                            Observada
-                        </Text>
-                    </TouchableOpacity> */}
                 </View>
             </ScrollView>
 
@@ -649,13 +645,8 @@ export default function PhotoAlbumScreen() {
     );
 }
 
-// ============================================================
-// ESTILOS
-// ============================================================
-
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#FFFFFF' },
-
     header: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -666,27 +657,11 @@ const styles = StyleSheet.create({
     },
     iconBtn: { padding: 6 },
     titleWrapper: { flex: 1, marginHorizontal: 12 },
-    title: {
-        fontFamily: 'Poppins-SemiBold',
-        fontSize: 15,
-        color: '#111827',
-    },
-    subtitle: {
-        fontFamily: 'Poppins-Regular',
-        fontSize: 11,
-        color: '#6B7280',
-        marginTop: 2,
-    },
-
+    title: { fontFamily: 'Poppins-SemiBold', fontSize: 15, color: '#111827' },
+    subtitle: { fontFamily: 'Poppins-Regular', fontSize: 11, color: '#6B7280', marginTop: 2 },
     scroll: { flex: 1 },
     scrollContent: { padding: 16, paddingBottom: 24 },
-
-    grid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-        marginBottom: 20,
-    },
+    grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
     gridItem: {
         width: '31%',
         aspectRatio: 1,
@@ -704,18 +679,8 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         padding: 4,
     },
-    emptyGrid: {
-        width: '100%',
-        paddingVertical: 40,
-        alignItems: 'center',
-        gap: 8,
-    },
-    emptyGridText: {
-        fontFamily: 'Poppins-Regular',
-        fontSize: 12,
-        color: '#9CA3AF',
-    },
-
+    emptyGrid: { width: '100%', paddingVertical: 40, alignItems: 'center', gap: 8 },
+    emptyGridText: { fontFamily: 'Poppins-Regular', fontSize: 12, color: '#9CA3AF' },
     sectionLabel: {
         fontFamily: 'Poppins-SemiBold',
         fontSize: 13,
@@ -723,7 +688,6 @@ const styles = StyleSheet.create({
         marginBottom: 8,
         marginTop: 8,
     },
-
     descripcionInput: {
         backgroundColor: '#F9FAFB',
         borderWidth: 1,
@@ -736,7 +700,6 @@ const styles = StyleSheet.create({
         color: '#111827',
         marginBottom: 20,
     },
-
     readonlyBox: {
         backgroundColor: '#F9FAFB',
         borderWidth: 1,
@@ -763,18 +726,8 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         backgroundColor: '#FEF2F2',
     },
-    editBtnText: {
-        color: '#B5121B',
-        fontFamily: 'Poppins-SemiBold',
-        fontSize: 12,
-    },
-
-    editActions: {
-        flexDirection: 'row',
-        gap: 10,
-        marginTop: -10,
-        marginBottom: 20,
-    },
+    editBtnText: { color: '#B5121B', fontFamily: 'Poppins-SemiBold', fontSize: 12 },
+    editActions: { flexDirection: 'row', gap: 10, marginTop: -10, marginBottom: 20 },
     editActionBtn: {
         flex: 1,
         paddingVertical: 12,
@@ -782,28 +735,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-    cancelBtn: {
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1.5,
-        borderColor: '#E5E7EB',
-    },
-    cancelBtnText: {
-        color: '#6B7280',
-        fontFamily: 'Poppins-SemiBold',
-        fontSize: 13,
-    },
+    cancelBtn: { backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: '#E5E7EB' },
+    cancelBtnText: { color: '#6B7280', fontFamily: 'Poppins-SemiBold', fontSize: 13 },
     saveBtn: { backgroundColor: '#B5121B' },
-    saveBtnText: {
-        color: '#FFFFFF',
-        fontFamily: 'Poppins-SemiBold',
-        fontSize: 13,
-    },
-
-    decisionRow: {
-        flexDirection: 'row',
-        gap: 12,
-        marginBottom: 12,
-    },
+    saveBtnText: { color: '#FFFFFF', fontFamily: 'Poppins-SemiBold', fontSize: 13 },
+    decisionRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
     decisionBtn: {
         flex: 1,
         paddingVertical: 14,
@@ -813,21 +749,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         backgroundColor: '#FFFFFF',
     },
-    decisionBtnConforme: {
-        backgroundColor: '#B5121B',
-        borderColor: '#B5121B',
-    },
-    decisionBtnObservado: {
-        backgroundColor: '#4B5563',
-        borderColor: '#4B5563',
-    },
-    decisionText: {
-        fontFamily: 'Poppins-SemiBold',
-        fontSize: 13,
-        color: '#374151',
-    },
+    decisionBtnConforme: { backgroundColor: '#B5121B', borderColor: '#B5121B' },
+    decisionText: { fontFamily: 'Poppins-SemiBold', fontSize: 13, color: '#374151' },
     decisionTextActive: { color: '#FFFFFF' },
-
     footer: {
         padding: 16,
         borderTopWidth: 1,
@@ -844,34 +768,12 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     exportBtnDisabled: { opacity: 0.6 },
-    exportBtnText: {
-        color: '#FFFFFF',
-        fontFamily: 'Poppins-SemiBold',
-        fontSize: 15,
-    },
-
-    emptyWrapper: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: 12,
-    },
+    exportBtnText: { color: '#FFFFFF', fontFamily: 'Poppins-SemiBold', fontSize: 15 },
+    emptyWrapper: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
     emptyText: { fontSize: 14, color: '#6B7280' },
-    backPill: {
-        paddingHorizontal: 20,
-        paddingVertical: 10,
-        borderRadius: 10,
-        backgroundColor: '#B5121B',
-    },
+    backPill: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, backgroundColor: '#B5121B' },
     backPillText: { color: '#FFFFFF', fontFamily: 'Poppins-SemiBold' },
-
-    readonlyActions: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'flex-end',
-        gap: 8,
-        marginTop: 12,
-    },
+    readonlyActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8, marginTop: 12 },
     micButtonReadonly: {
         width: 40,
         height: 40,
@@ -882,10 +784,5 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#E5E7EB',
     },
-    row: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 4,
-    },
+    row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
 });

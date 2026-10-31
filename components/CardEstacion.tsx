@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
     ScrollView,
@@ -19,9 +18,12 @@ interface Props {
         actividadNombre: string,
         estado: 'pendiente' | 'en_progreso' | 'completado' | 'observado'
     ) => void;
+    onSubirFotosPress: (id: number, nombre: string) => void;
+
 }
 
-export default function CardEstacion({ estacion, onRefrescar, onActividadPress }: Props) {
+
+export default function CardEstacion({ estacion, onRefrescar, onActividadPress, onSubirFotosPress }: Props) {
     const [expandida, setExpandida] = useState(true);
     const [modalSupervisores, setModalSupervisores] = useState(false);
 
@@ -81,6 +83,7 @@ export default function CardEstacion({ estacion, onRefrescar, onActividadPress }
                                 actividad={act}
                                 esUltima={index === todasActividades.length - 1}
                                 onPress={() => onActividadPress(act.id, act.nombre, act.estado)}
+                                onUpload={() => onSubirFotosPress(act.id, act.nombre)}
                             />
                         ))
                     )}
@@ -111,15 +114,16 @@ function ActividadItem({
     actividad,
     esUltima,
     onPress,
+    onUpload
 }: {
     actividad: ActividadDetalle;
     esUltima: boolean;
     onPress: () => void;
+    onUpload: () => void;
 }) {
     const estadoConfig = getEstadoConfig(actividad.estado);
     const estadoDopConfig = getEstadoDop(actividad.estado);
     const esObservacion = actividad.tipo === 'observacion';
-    const router = useRouter();
 
     return (
         <TouchableOpacity
@@ -140,12 +144,7 @@ function ActividadItem({
 
             <TouchableOpacity
                 style={{ padding: 8, marginRight: 8, backgroundColor: '#F3F4F6', borderRadius: 8 }}
-                onPress={() => {
-                    router.push({
-                        pathname: '/upload-photo',
-                        params: { estacion_servicio_actividad_id: actividad.id }
-                    });
-                }}
+                onPress={onUpload}
             >
                 <Ionicons name="cloud-upload-outline" size={20} color="#910E16" />
             </TouchableOpacity>

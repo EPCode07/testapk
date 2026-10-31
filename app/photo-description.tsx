@@ -296,68 +296,70 @@ function PhotoDescribeContent({ foto }: { foto: FotoCaptura }) {
                                     </TouchableOpacity>
                                 </View>
                             ) : (
-                                <View style={{ marginTop: 15 }}>
-                                    <Text style={{ fontFamily: 'Poppins-SemiBold', fontSize: 14, color: '#374151', marginBottom: 10 }}>
-                                        Estado de la tarea
-                                    </Text>
+                                <View style={{ flexDirection: 'row', gap: 10, marginBottom: 15 }}>
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.estadoBtn,
+                                            estadoTarea === 'conforme' && styles.estadoBtnActive
+                                        ]}
+                                        onPress={async () => {
+                                            await guardarDescripcionActual();
+                                            setEstadoTarea('conforme');
+                                            volverAtras();
+                                        }}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Text style={[
+                                            styles.estadoBtnText,
+                                            estadoTarea === 'conforme' && styles.estadoBtnTextActive
+                                        ]}>Conforme</Text>
+                                    </TouchableOpacity>
 
-                                    <View style={{ flexDirection: 'row', gap: 10, marginBottom: 15 }}>
-                                        <TouchableOpacity
-                                            style={[
-                                                styles.estadoBtn,
-                                                estadoTarea === 'conforme' && styles.estadoBtnActive
-                                            ]}
-                                            onPress={() => guardarEstadoYSalir('conforme')} // <--- AQUÍ
-                                            activeOpacity={0.8}
-                                        >
-                                            <Text style={[
-                                                styles.estadoBtnText,
-                                                estadoTarea === 'conforme' && styles.estadoBtnTextActive
-                                            ]}>Conforme</Text>
-                                        </TouchableOpacity>
-
-                                        <TouchableOpacity
-                                            style={[
-                                                styles.estadoBtn,
-                                                estadoTarea === 'observada' && styles.estadoBtnActive
-                                            ]}
-                                            onPress={() => guardarEstadoYSalir('observada')} // <--- AQUÍ
-                                            activeOpacity={0.8}
-                                        >
-                                            <Text style={[
-                                                styles.estadoBtnText,
-                                                estadoTarea === 'observada' && styles.estadoBtnTextActive
-                                            ]}>Observada</Text>
-                                        </TouchableOpacity>
-                                    </View>
-
-                                    {estadoTarea === 'observada' && (
-                                        <TouchableOpacity
-                                            style={{
-                                                flexDirection: 'row',
-                                                alignItems: 'center',
-                                                backgroundColor: '#FFF0F1',
-                                                padding: 12,
-                                                borderRadius: 8,
-                                                borderWidth: 1,
-                                                borderColor: '#FFD0D3'
-                                            }}
-                                            onPress={() => {
-                                                const textoActual = campo.current?.getValue() || descripcionGuardada;
-                                                setDescripcionParaTarea(textoActual);
-                                                setModalTareaVisible(true);
-                                            }}
-                                            activeOpacity={0.8}
-                                        >
-                                            <Ionicons name="add-circle-outline" size={20} color="#910E16" />
-                                            <Text style={{ color: '#910E16', marginLeft: 8, fontFamily: 'Poppins-SemiBold', fontSize: 14 }}>
-                                                Crear tarea por observación
-                                            </Text>
-                                        </TouchableOpacity>
-                                    )}
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.estadoBtn,
+                                            estadoTarea === 'observada' && styles.estadoBtnActive
+                                        ]}
+                                        onPress={async () => {
+                                            await guardarDescripcionActual();
+                                            setEstadoTarea('observada');
+                                        }}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Text style={[
+                                            styles.estadoBtnText,
+                                            estadoTarea === 'observada' && styles.estadoBtnTextActive
+                                        ]}>Observada</Text>
+                                    </TouchableOpacity>
                                 </View>
-                            )}
 
+
+
+                            )}
+                            {estadoTarea === 'observada' && (
+                                <TouchableOpacity
+                                    style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        backgroundColor: '#FFF0F1',
+                                        padding: 12,
+                                        borderRadius: 8,
+                                        borderWidth: 1,
+                                        borderColor: '#FFD0D3'
+                                    }}
+                                    onPress={() => {
+                                        const textoActual = campo.current?.getValue() || descripcionGuardada;
+                                        setDescripcionParaTarea(textoActual);
+                                        setModalTareaVisible(true);
+                                    }}
+                                    activeOpacity={0.8}
+                                >
+                                    <Ionicons name="add-circle-outline" size={20} color="#910E16" />
+                                    <Text style={{ color: '#910E16', marginLeft: 8, fontFamily: 'Poppins-SemiBold', fontSize: 14 }}>
+                                        + Crear tarea por observación
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
                             <ModalCrearTarea
                                 visible={modalTareaVisible}
                                 proyectoId={actividadEnCurso?.proyectoId || 0}
